@@ -1,0 +1,520 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beautiful Tic-Tac-Toe · vs AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0b0e1a 0%, #1a1f2f 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 1rem;
+        }
+
+        .game-card {
+            background: rgba(30, 38, 58, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 4rem 2rem 4rem 2rem;
+            box-shadow: 0 25px 50px -8px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03);
+            padding: 2rem 2.5rem 2.8rem;
+            width: 100%;
+            max-width: 600px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 215, 150, 0.08);
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 300;
+            font-size: 2.6rem;
+            letter-spacing: 4px;
+            color: #f3e9d2;
+            text-shadow: 0 0 12px #d4af7a55, 0 4px 8px rgba(0,0,0,0.6);
+            margin-bottom: 0.5rem;
+        }
+        h1 span {
+            display: inline-block;
+            background: linear-gradient(135deg, #f7d9a9, #e2b882);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: none;
+            font-weight: 600;
+        }
+
+        .turn-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            background: #1e253b80;
+            border-radius: 60px;
+            padding: 0.5rem 1.8rem;
+            margin: 0.5rem 0 1.8rem 0;
+            backdrop-filter: blur(4px);
+            border: 1px solid #b89b7a30;
+            box-shadow: inset 0 2px 6px #00000055;
+        }
+        .turn-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: #d6cdb8;
+        }
+        .turn-badge .symbol {
+            font-size: 2rem;
+            line-height: 1;
+            width: 2.2rem;
+            text-align: center;
+            background: #2b334d;
+            border-radius: 40px;
+            padding: 0.1rem 0.2rem;
+            box-shadow: 0 2px 8px #00000055;
+        }
+        .turn-badge .symbol.x-sym { color: #ffb08c; text-shadow: 0 0 12px #ff8a5c; }
+        .turn-badge .symbol.o-sym { color: #8fcbff; text-shadow: 0 0 12px #5aa9ff; }
+
+        .winner-message {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 400;
+            background: #222b44cc;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            border: 1px solid #e5c9a050;
+            color: #f2e3ca;
+            backdrop-filter: blur(4px);
+            margin: 0 0 1.2rem 0;
+            min-height: 3.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .winner-message strong {
+            font-weight: 600;
+            background: #313d60;
+            padding: 0.2rem 1.2rem;
+            border-radius: 30px;
+            color: #f7e6cc;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 450px;
+            margin: 0.5rem auto 1.8rem;
+        }
+
+        .cell {
+            background: #1b2238;
+            border-radius: 28px;
+            box-shadow: 0 10px 0 #0c0f1a, 0 8px 20px #00000099, inset 0 -4px 0 #3f4a6b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4.5rem;
+            font-weight: 500;
+            color: #d4dcec;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            aspect-ratio: 1 / 1;
+            border: 1px solid #6d7ba330;
+            text-shadow: 0 4px 8px #00000066;
+            transform: scale(1);
+        }
+
+        .cell:active:not(.disabled) {
+            transform: scale(0.94);
+            box-shadow: 0 4px 0 #0c0f1a, 0 8px 16px #000000aa;
+        }
+
+        .cell.disabled {
+            cursor: not-allowed;
+            opacity: 0.85;
+            filter: saturate(0.7);
+            box-shadow: 0 4px 0 #0c0f1a, 0 6px 12px #00000077;
+        }
+
+        .cell.x-move {
+            color: #ffb08c;
+            text-shadow: 0 0 20px #ff7f4f, 0 4px 8px black;
+        }
+        .cell.o-move {
+            color: #8fcbff;
+            text-shadow: 0 0 20px #3f9eff, 0 4px 8px black;
+        }
+
+        .cell.win-highlight {
+            background: #2a3457;
+            box-shadow: 0 0 0 2px #f7d9a9, 0 10px 0 #0c0f1a, 0 8px 24px #000000dd;
+            transform: scale(1.02);
+            transition: 0.2s;
+        }
+
+        .reset-btn {
+            display: block;
+            width: fit-content;
+            margin: 0.4rem auto 0;
+            padding: 0.9rem 3.2rem;
+            background: linear-gradient(145deg, #303b5a, #1f2842);
+            border: none;
+            border-radius: 60px;
+            color: #f2e3ca;
+            font-size: 1.4rem;
+            font-weight: 500;
+            letter-spacing: 2px;
+            box-shadow: 0 8px 0 #0b0e17, 0 6px 20px #00000099;
+            transition: all 0.08s linear;
+            cursor: pointer;
+            border: 1px solid #b89b7a30;
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            justify-content: center;
+        }
+        .reset-btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 3px 0 #0b0e17, 0 6px 16px #000000bb;
+        }
+        .reset-btn:hover {
+            background: #38446b;
+            border-color: #dbbd9660;
+            color: #fff6e6;
+        }
+
+        .status-sub {
+            display: flex;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: #a096b0;
+            margin-top: 0.8rem;
+            gap: 0.5rem;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 500px) {
+            .game-card { padding: 1.5rem 1.2rem 2rem; border-radius: 2.5rem 1.5rem 2.5rem 1.5rem; }
+            h1 { font-size: 2rem; }
+            .cell { font-size: 3.2rem; border-radius: 20px; }
+            .board { gap: 0.8rem; }
+            .turn-badge { font-size: 1.1rem; }
+        }
+        @media (max-width: 400px) {
+            .cell { font-size: 2.7rem; }
+            .reset-btn { padding: 0.7rem 2rem; font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-card">
+    <h1>✦ <span>Tic-Tac-Toe</span> ✦</h1>
+
+    <div class="turn-indicator">
+        <div class="turn-badge">
+            <span class="symbol x-sym" id="turnSymbolX">✕</span>
+            <span id="turnLabel">Turn</span>
+        </div>
+        <div class="turn-badge">
+            <span class="symbol o-sym" id="turnSymbolO">◯</span>
+        </div>
+    </div>
+
+    <div class="winner-message" id="winnerMessage">
+        <span>✧</span>  You <strong id="winnerName">✕</strong>  ✧
+    </div>
+
+    <div class="board" id="boardContainer">
+        <!-- 9 cells built by JS -->
+    </div>
+
+    <button class="reset-btn" id="resetButton">↺  New Game</button>
+    <div class="status-sub">✦  You  ✕  ·  Computer  ◯  ✦</div>
+</div>
+
+<script>
+    (function() {
+        // ---- DOM elements ----
+        const boardEl = document.getElementById('boardContainer');
+        const winnerMsg = document.getElementById('winnerMessage');
+        const winnerName = document.getElementById('winnerName');
+        const turnSymbolX = document.getElementById('turnSymbolX');
+        const turnSymbolO = document.getElementById('turnSymbolO');
+        const turnLabel = document.getElementById('turnLabel');
+
+        // ---- Game state ----
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';    // X = human, O = computer
+        let gameActive = true;
+        let winner = null;
+        let isComputerTurn = false;
+
+        const cells = [];
+
+        function buildBoard() {
+            boardEl.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                cell.addEventListener('click', cellClickHandler);
+                boardEl.appendChild(cell);
+                cells[i] = cell;
+            }
+        }
+        buildBoard();
+
+        // ---- Update UI ----
+        function updateUI() {
+            for (let i = 0; i < 9; i++) {
+                const val = board[i];
+                const cell = cells[i];
+                cell.textContent = val || '';
+                cell.classList.remove('x-move', 'o-move', 'win-highlight', 'disabled');
+                if (val === 'X') {
+                    cell.classList.add('x-move');
+                } else if (val === 'O') {
+                    cell.classList.add('o-move');
+                }
+                if (val !== null || !gameActive || winner || isComputerTurn) {
+                    cell.classList.add('disabled');
+                }
+            }
+
+            if (gameActive && !winner && !isComputerTurn) {
+                turnSymbolX.style.opacity = '1';
+                turnSymbolO.style.opacity = '0.4';
+                turnLabel.textContent = 'Your turn';
+                winnerMsg.innerHTML = `<span>✦</span>  Your turn <strong>✕</strong>  <span>✦</span>`;
+                winnerName.textContent = '✕';
+            } else if (gameActive && !winner && isComputerTurn) {
+                turnSymbolX.style.opacity = '0.4';
+                turnSymbolO.style.opacity = '1';
+                turnLabel.textContent = 'Computer';
+                winnerMsg.innerHTML = `<span>⏳</span>  Computer is thinking ...  <span>⏳</span>`;
+                winnerName.textContent = '◯';
+            } else {
+                turnSymbolX.style.opacity = '0.4';
+                turnSymbolO.style.opacity = '0.4';
+                if (winner === 'X') {
+                    winnerMsg.innerHTML = `<span>🏆</span>  You won!  <span>🏆</span>`;
+                    winnerName.textContent = '✕';
+                } else if (winner === 'O') {
+                    winnerMsg.innerHTML = `<span>💻</span>  Computer won!  <span>💻</span>`;
+                    winnerName.textContent = '◯';
+                } else if (winner === 'tie') {
+                    winnerMsg.innerHTML = `<span>🤝</span>  It's a tie  <span>🤝</span>`;
+                    winnerName.textContent = '--';
+                } else {
+                    winnerMsg.innerHTML = `<span>✧</span>  New game  <span>✧</span>`;
+                    winnerName.textContent = '✕';
+                }
+                turnLabel.textContent = 'End';
+            }
+        }
+
+        // ---- Check winner ----
+        function checkWinner() {
+            const winPatterns = [
+                [0,1,2], [3,4,5], [6,7,8],
+                [0,3,6], [1,4,7], [2,5,8],
+                [0,4,8], [2,4,6]
+            ];
+            for (let pattern of winPatterns) {
+                const [a,b,c] = pattern;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { winner: board[a], line: pattern };
+                }
+            }
+            if (board.every(cell => cell !== null)) {
+                return { winner: 'tie', line: null };
+            }
+            return { winner: null, line: null };
+        }
+
+        function highlightWinLine(line) {
+            if (!line) return;
+            for (let idx of line) {
+                cells[idx].classList.add('win-highlight');
+            }
+        }
+
+        function endGame(result) {
+            gameActive = false;
+            isComputerTurn = false;
+            if (result.winner === 'tie') {
+                winner = 'tie';
+            } else if (result.winner) {
+                winner = result.winner;
+                if (result.line) {
+                    highlightWinLine(result.line);
+                }
+            }
+            updateUI();
+        }
+
+        // ---- Computer move (simple AI) ----
+        function computerMove() {
+            if (!gameActive || winner) return;
+            if (isComputerTurn) return;
+
+            if (board.every(cell => cell !== null)) {
+                const result = checkWinner();
+                if (result.winner) endGame(result);
+                return;
+            }
+
+            isComputerTurn = true;
+            updateUI();
+
+            setTimeout(() => {
+                if (!gameActive || winner) {
+                    isComputerTurn = false;
+                    updateUI();
+                    return;
+                }
+
+                // 1. Try to win
+                let moveIndex = findBestMove('O');
+                // 2. Block player's win
+                if (moveIndex === -1) {
+                    moveIndex = findBestMove('X');
+                }
+                // 3. Center
+                if (moveIndex === -1 && board[4] === null) {
+                    moveIndex = 4;
+                }
+                // 4. Corners
+                if (moveIndex === -1) {
+                    const corners = [0, 2, 6, 8];
+                    const shuffled = corners.sort(() => Math.random() - 0.5);
+                    for (let idx of shuffled) {
+                        if (board[idx] === null) {
+                            moveIndex = idx;
+                            break;
+                        }
+                    }
+                }
+                // 5. Any empty
+                if (moveIndex === -1) {
+                    for (let i = 0; i < 9; i++) {
+                        if (board[i] === null) {
+                            moveIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (moveIndex !== -1) {
+                    board[moveIndex] = 'O';
+                    const result = checkWinner();
+                    if (result.winner) {
+                        isComputerTurn = false;
+                        endGame(result);
+                        return;
+                    }
+                    currentPlayer = 'X';
+                    isComputerTurn = false;
+                    const resultAfter = checkWinner();
+                    if (resultAfter.winner) {
+                        endGame(resultAfter);
+                        return;
+                    }
+                    updateUI();
+                } else {
+                    isComputerTurn = false;
+                    const result = checkWinner();
+                    if (result.winner) endGame(result);
+                    else updateUI();
+                }
+            }, 220);
+        }
+
+        // ---- Find best move for a player ----
+        function findBestMove(player) {
+            const winPatterns = [
+                [0,1,2], [3,4,5], [6,7,8],
+                [0,3,6], [1,4,7], [2,5,8],
+                [0,4,8], [2,4,6]
+            ];
+            for (let pattern of winPatterns) {
+                const [a,b,c] = pattern;
+                const values = [board[a], board[b], board[c]];
+                const nullCount = values.filter(v => v === null).length;
+                const playerCount = values.filter(v => v === player).length;
+                if (nullCount === 1 && playerCount === 2) {
+                    if (board[a] === null) return a;
+                    if (board[b] === null) return b;
+                    if (board[c] === null) return c;
+                }
+            }
+            return -1;
+        }
+
+        // ---- Human click ----
+        function cellClickHandler(e) {
+            const index = Number(e.currentTarget.dataset.index);
+            if (!gameActive) return;
+            if (winner) return;
+            if (isComputerTurn) return;
+            if (board[index] !== null) return;
+            if (currentPlayer !== 'X') return;
+
+            board[index] = 'X';
+            const result = checkWinner();
+            if (result.winner) {
+                endGame(result);
+                return;
+            }
+            currentPlayer = 'O';
+            updateUI();
+            computerMove();
+        }
+
+        // ---- Reset ----
+        function resetGame() {
+            board = Array(9).fill(null);
+            currentPlayer = 'X';
+            gameActive = true;
+            winner = null;
+            isComputerTurn = false;
+            for (let i = 0; i < 9; i++) {
+                const cell = cells[i];
+                cell.textContent = '';
+                cell.classList.remove('x-move', 'o-move', 'win-highlight', 'disabled');
+            }
+            updateUI();
+            turnSymbolX.style.opacity = '1';
+            turnSymbolO.style.opacity = '0.4';
+            turnLabel.textContent = 'Your turn';
+            winnerMsg.innerHTML = `<span>✦</span>  Your turn <strong>✕</strong>  <span>✦</span>`;
+            winnerName.textContent = '✕';
+        }
+
+        document.getElementById('resetButton').addEventListener('click', resetGame);
+
+        // ---- Start ----
+        resetGame();
+        console.log('✨ Smart Tic-Tac-Toe ✨  |  You vs Computer');
+    })();
+</script>
+</body>
+</html>
