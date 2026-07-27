@@ -1,0 +1,1143 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>♟️ 3D Chess - Ultra Premium</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        body {
+            background: #0a0a12;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .header {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #d4af37;
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 8px;
+            text-shadow: 0 0 40px rgba(212, 175, 55, 0.3), 0 0 80px rgba(212, 175, 55, 0.1);
+            background: rgba(10, 10, 18, 0.7);
+            padding: 12px 40px;
+            border-radius: 60px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            pointer-events: none;
+            z-index: 20;
+            font-family: 'Georgia', serif;
+        }
+
+        .header span {
+            color: #ffffff40;
+            font-size: 14px;
+            letter-spacing: 2px;
+            display: block;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .controls-hint {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff40;
+            font-size: 13px;
+            letter-spacing: 2px;
+            background: rgba(10, 10, 18, 0.6);
+            padding: 10px 30px;
+            border-radius: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #ffffff08;
+            pointer-events: none;
+            z-index: 20;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .controls-hint i {
+            color: #d4af37;
+            font-style: normal;
+        }
+
+        .turn-indicator {
+            position: fixed;
+            top: 90px;
+            right: 30px;
+            color: #ffffff60;
+            font-size: 14px;
+            letter-spacing: 2px;
+            background: rgba(10, 10, 18, 0.7);
+            padding: 10px 20px;
+            border-radius: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #ffffff08;
+            z-index: 20;
+            font-family: 'Segoe UI', sans-serif;
+            pointer-events: none;
+        }
+
+        .turn-indicator .turn-color {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+            border: 2px solid #ffffff30;
+        }
+
+        .turn-indicator .turn-color.white {
+            background: #f5f0e8;
+        }
+        .turn-indicator .turn-color.black {
+            background: #1a1a1a;
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                font-size: 18px;
+                padding: 8px 20px;
+                letter-spacing: 4px;
+                top: 10px;
+            }
+            .header span {
+                font-size: 10px;
+            }
+            .controls-hint {
+                font-size: 10px;
+                padding: 6px 16px;
+                bottom: 15px;
+            }
+            .turn-indicator {
+                top: 75px;
+                right: 10px;
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            .turn-indicator .turn-color {
+                width: 10px;
+                height: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        ♔ CHESS
+        <span>✦ 3D Premium Edition ✦</span>
+    </div>
+
+    <div class="turn-indicator" id="turnIndicator">
+        <span class="turn-color white" id="turnColor"></span>
+        <span id="turnText">White's Turn</span>
+    </div>
+
+    <div class="controls-hint">
+        <i>🖱</i> Click piece to select · <i>✅</i> Click green to move · <i>🔄</i> Drag to rotate
+    </div>
+
+    <div id="ui-overlay"></div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js">
+    </script>
+
+    <script>
+        // ============================================================
+        //  ULTRA PREMIUM 3D CHESS - WORKING MOVEMENT
+        //  کلیک = انتخاب و حرکت | کشیدن = چرخش دوربین
+        // ============================================================
+
+        // ---------- صحنه ----------
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a12);
+        scene.fog = new THREE.Fog(0x0a0a12, 20, 40);
+
+        // ---------- دوربین ----------
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(8, 7, 10);
+        camera.lookAt(0, 0, 0);
+
+        // ---------- رندرر ----------
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: false,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.body.prepend(renderer.domElement);
+
+        // ---------- کنترلر ----------
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 4;
+        controls.maxDistance = 20;
+        controls.maxPolarAngle = Math.PI / 2.1;
+        controls.target.set(0, 0.3, 0);
+        controls.autoRotate = false;
+
+        // ============================================================
+        //  نورپردازی سینمایی
+        // ============================================================
+
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        mainLight.position.set(8, 15, 5);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.camera.near = 0.5;
+        mainLight.shadow.camera.far = 30;
+        mainLight.shadow.camera.left = -10;
+        mainLight.shadow.camera.right = 10;
+        mainLight.shadow.camera.top = 10;
+        mainLight.shadow.camera.bottom = -10;
+        mainLight.shadow.bias = -0.001;
+        scene.add(mainLight);
+
+        const fillLight = new THREE.DirectionalLight(0x8888ff, 0.4);
+        fillLight.position.set(-5, 3, -5);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xff8844, 0.3);
+        rimLight.position.set(-3, 2, 8);
+        scene.add(rimLight);
+
+        const pointLight = new THREE.PointLight(0xd4af37, 0.5, 15);
+        pointLight.position.set(0, 3, 0);
+        scene.add(pointLight);
+
+        // ============================================================
+        //  مواد
+        // ============================================================
+
+        const darkWoodMat = new THREE.MeshStandardMaterial({
+            color: 0x2a1a0a,
+            roughness: 0.6,
+            metalness: 0.1,
+            envMapIntensity: 0.5,
+        });
+
+        const lightWoodMat = new THREE.MeshStandardMaterial({
+            color: 0xe8d5b0,
+            roughness: 0.5,
+            metalness: 0.05,
+            envMapIntensity: 0.5,
+        });
+
+        const goldMat = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.2,
+            metalness: 0.9,
+            envMapIntensity: 1.5,
+        });
+
+        const highlightMat = new THREE.MeshStandardMaterial({
+            color: 0x44ff88,
+            roughness: 0.3,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.5,
+            emissive: 0x44ff88,
+            emissiveIntensity: 0.3,
+        });
+
+        const selectMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd44,
+            roughness: 0.3,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.6,
+            emissive: 0xffdd44,
+            emissiveIntensity: 0.4,
+        });
+
+        function createPieceMaterial(color, isLight) {
+            const baseColor = isLight ? 0xf5f0e8 : 0x1a1a1a;
+            const metalness = isLight ? 0.1 : 0.3;
+            const roughness = isLight ? 0.3 : 0.4;
+            return new THREE.MeshStandardMaterial({
+                color: baseColor,
+                roughness: roughness,
+                metalness: metalness,
+                envMapIntensity: 0.8,
+                emissive: isLight ? 0x000000 : 0x111122,
+                emissiveIntensity: 0.05,
+            });
+        }
+
+        const whiteMat = createPieceMaterial(0xf5f0e8, true);
+        const blackMat = createPieceMaterial(0x1a1a1a, false);
+        const goldAccentMat = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.2,
+            metalness: 0.8,
+            envMapIntensity: 1.2,
+        });
+
+        // ============================================================
+        //  ساخت صفحه شطرنج
+        // ============================================================
+
+        const boardGroup = new THREE.Group();
+        const tileSize = 1;
+        const boardSize = 8;
+        const halfBoard = boardSize / 2;
+
+        const tiles = [];
+
+        for (let row = 0; row < boardSize; row++) {
+            for (let col = 0; col < boardSize; col++) {
+                const isDark = (row + col) % 2 === 1;
+                const mat = isDark ? darkWoodMat : lightWoodMat;
+
+                const tile = new THREE.Mesh(
+                    new THREE.BoxGeometry(tileSize * 0.98, 0.08, tileSize * 0.98),
+                    mat
+                );
+                const x = col - halfBoard + 0.5;
+                const z = row - halfBoard + 0.5;
+                tile.position.set(x, -0.04, z);
+                tile.castShadow = true;
+                tile.receiveShadow = true;
+                tile.userData = { row, col, x, z, isDark };
+                boardGroup.add(tile);
+                tiles.push(tile);
+            }
+        }
+
+        const borderGeo = new THREE.BoxGeometry(boardSize + 0.6, 0.12, boardSize + 0.6);
+        const border = new THREE.Mesh(borderGeo, goldMat);
+        border.position.y = -0.08;
+        border.receiveShadow = true;
+        border.castShadow = true;
+        boardGroup.add(border);
+
+        const baseMat = new THREE.MeshStandardMaterial({
+            color: 0x1a0f08,
+            roughness: 0.9,
+            metalness: 0.05,
+        });
+        const base = new THREE.Mesh(
+            new THREE.BoxGeometry(boardSize + 1.2, 0.2, boardSize + 1.2),
+            baseMat
+        );
+        base.position.y = -0.2;
+        base.receiveShadow = true;
+        boardGroup.add(base);
+
+        scene.add(boardGroup);
+
+        // ============================================================
+        //  ساخت مهره‌ها
+        // ============================================================
+
+        function createPiece(type, isWhite, posX, posZ) {
+            const group = new THREE.Group();
+            const colorMat = isWhite ? whiteMat : blackMat;
+            const scale = 0.9;
+            const baseY = 0.04;
+
+            switch (type) {
+                case 'pawn':
+                    const pawnBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.25 * scale, 0.3 * scale, 0.4 * scale, 24),
+                        colorMat
+                    );
+                    pawnBody.position.y = baseY + 0.2 * scale;
+                    pawnBody.castShadow = true;
+                    group.add(pawnBody);
+
+                    const pawnHead = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.2 * scale, 20, 20),
+                        colorMat
+                    );
+                    pawnHead.position.y = baseY + 0.45 * scale;
+                    pawnHead.castShadow = true;
+                    group.add(pawnHead);
+
+                    const pawnBase = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.35 * scale, 0.38 * scale, 0.06 * scale, 24),
+                        colorMat
+                    );
+                    pawnBase.position.y = baseY + 0.03 * scale;
+                    pawnBase.castShadow = true;
+                    group.add(pawnBase);
+                    break;
+
+                case 'rook':
+                    const rookBase = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.35 * scale, 0.4 * scale, 0.1 * scale, 24),
+                        colorMat
+                    );
+                    rookBase.position.y = baseY + 0.05 * scale;
+                    rookBase.castShadow = true;
+                    group.add(rookBase);
+
+                    const rookBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.3 * scale, 0.32 * scale, 0.4 * scale, 24),
+                        colorMat
+                    );
+                    rookBody.position.y = baseY + 0.25 * scale;
+                    rookBody.castShadow = true;
+                    group.add(rookBody);
+
+                    const rookTop = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.38 * scale, 0.35 * scale, 0.08 * scale, 24),
+                        colorMat
+                    );
+                    rookTop.position.y = baseY + 0.48 * scale;
+                    rookTop.castShadow = true;
+                    group.add(rookTop);
+
+                    for (let i = 0; i < 4; i++) {
+                        const angle = (i / 4) * Math.PI * 2;
+                        const crenel = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.08 * scale, 0.08 * scale, 0.08 * scale),
+                            colorMat
+                        );
+                        crenel.position.set(
+                            Math.cos(angle) * 0.32 * scale,
+                            baseY + 0.52 * scale,
+                            Math.sin(angle) * 0.32 * scale
+                        );
+                        crenel.castShadow = true;
+                        group.add(crenel);
+                    }
+                    break;
+
+                case 'knight':
+                    const knightBase = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.3 * scale, 0.35 * scale, 0.08 * scale, 24),
+                        colorMat
+                    );
+                    knightBase.position.y = baseY + 0.04 * scale;
+                    knightBase.castShadow = true;
+                    group.add(knightBase);
+
+                    const knightBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.25 * scale, 0.28 * scale, 0.35 * scale, 24),
+                        colorMat
+                    );
+                    knightBody.position.y = baseY + 0.22 * scale;
+                    knightBody.castShadow = true;
+                    group.add(knightBody);
+
+                    const headGroup = new THREE.Group();
+                    const horseHead = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.15 * scale, 16, 16),
+                        colorMat
+                    );
+                    horseHead.position.set(0.15 * scale, 0.1 * scale, 0);
+                    horseHead.castShadow = true;
+                    headGroup.add(horseHead);
+
+                    const horseNeck = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.08 * scale, 0.12 * scale, 0.2 * scale, 12),
+                        colorMat
+                    );
+                    horseNeck.position.set(0.1 * scale, -0.02 * scale, 0);
+                    horseNeck.rotation.z = 0.3;
+                    horseNeck.castShadow = true;
+                    headGroup.add(horseNeck);
+
+                    headGroup.position.set(0.1 * scale, baseY + 0.38 * scale, 0);
+                    headGroup.rotation.x = -0.2;
+                    headGroup.rotation.z = 0.4;
+                    group.add(headGroup);
+                    break;
+
+                case 'bishop':
+                    const bishopBase = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.3 * scale, 0.35 * scale, 0.08 * scale, 24),
+                        colorMat
+                    );
+                    bishopBase.position.y = baseY + 0.04 * scale;
+                    bishopBase.castShadow = true;
+                    group.add(bishopBase);
+
+                    const bishopBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.22 * scale, 0.28 * scale, 0.4 * scale, 24),
+                        colorMat
+                    );
+                    bishopBody.position.y = baseY + 0.24 * scale;
+                    bishopBody.castShadow = true;
+                    group.add(bishopBody);
+
+                    const bishopNeck = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12 * scale, 0.15 * scale, 0.08 * scale, 16),
+                        colorMat
+                    );
+                    bishopNeck.position.y = baseY + 0.44 * scale;
+                    bishopNeck.castShadow = true;
+                    group.add(bishopNeck);
+
+                    const bishopHead = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.12 * scale, 16, 16),
+                        colorMat
+                    );
+                    bishopHead.position.y = baseY + 0.5 * scale;
+                    bishopHead.castShadow = true;
+                    group.add(bishopHead);
+
+                    const slit = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.04 * scale, 0.02 * scale, 0.08 * scale),
+                        new THREE.MeshStandardMaterial({ color: isWhite ? 0x222222 : 0x888888 })
+                    );
+                    slit.position.y = baseY + 0.5 * scale;
+                    slit.position.z = 0.06 * scale;
+                    group.add(slit);
+                    break;
+
+                case 'queen':
+                    const queenBase = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.38 * scale, 0.42 * scale, 0.08 * scale, 24),
+                        colorMat
+                    );
+                    queenBase.position.y = baseY + 0.04 * scale;
+                    queenBase.castShadow = true;
+                    group.add(queenBase);
+
+                    const queenBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.3 * scale, 0.35 * scale, 0.45 * scale, 24),
+                        colorMat
+                    );
+                    queenBody.position.y = baseY + 0.27 * scale;
+                    queenBody.castShadow = true;
+                    group.add(queenBody);
+
+                    const queenNeck = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.15 * scale, 0.18 * scale, 0.06 * scale, 16),
+                        colorMat
+                    );
+                    queenNeck.position.y = baseY + 0.48 * scale;
+                    queenNeck.castShadow = true;
+                    group.add(queenNeck);
+
+                    const queenHead = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.16 * scale, 20, 20),
+                        colorMat
+                    );
+                    queenHead.position.y = baseY + 0.55 * scale;
+                    queenHead.castShadow = true;
+                    group.add(queenHead);
+
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const tip = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.03 * scale, 0.08 * scale, 6),
+                            goldAccentMat
+                        );
+                        tip.position.set(
+                            Math.cos(angle) * 0.2 * scale,
+                            baseY + 0.6 * scale,
+                            Math.sin(angle) * 0.2 * scale
+                        );
+                        tip.castShadow = true;
+                        group.add(tip);
+                    }
+                    break;
+
+                case 'king':
+                    const kingBase = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.4 * scale, 0.45 * scale, 0.1 * scale, 24),
+                        colorMat
+                    );
+                    kingBase.position.y = baseY + 0.05 * scale;
+                    kingBase.castShadow = true;
+                    group.add(kingBase);
+
+                    const kingBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.32 * scale, 0.38 * scale, 0.5 * scale, 24),
+                        colorMat
+                    );
+                    kingBody.position.y = baseY + 0.3 * scale;
+                    kingBody.castShadow = true;
+                    group.add(kingBody);
+
+                    const kingNeck = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.16 * scale, 0.2 * scale, 0.08 * scale, 16),
+                        colorMat
+                    );
+                    kingNeck.position.y = baseY + 0.54 * scale;
+                    kingNeck.castShadow = true;
+                    group.add(kingNeck);
+
+                    const kingHead = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.18 * scale, 20, 20),
+                        colorMat
+                    );
+                    kingHead.position.y = baseY + 0.62 * scale;
+                    kingHead.castShadow = true;
+                    group.add(kingHead);
+
+                    const crossMat = new THREE.MeshStandardMaterial({
+                        color: 0xd4af37,
+                        roughness: 0.2,
+                        metalness: 0.9,
+                        emissive: 0xd4af37,
+                        emissiveIntensity: 0.1,
+                    });
+                    const crossV = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.04 * scale, 0.2 * scale, 0.04 * scale),
+                        crossMat
+                    );
+                    crossV.position.y = baseY + 0.75 * scale;
+                    crossV.castShadow = true;
+                    group.add(crossV);
+
+                    const crossH = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.12 * scale, 0.04 * scale, 0.04 * scale),
+                        crossMat
+                    );
+                    crossH.position.y = baseY + 0.78 * scale;
+                    crossH.castShadow = true;
+                    group.add(crossH);
+                    break;
+            }
+
+            group.position.set(posX, 0, posZ);
+            group.userData = { type, isWhite, row: Math.round(posZ + 3.5), col: Math.round(posX + 3.5) };
+
+            if (isWhite) {
+                group.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => {
+                                m.emissive = new THREE.Color(0x444466);
+                                m.emissiveIntensity = 0.03;
+                            });
+                        } else {
+                            child.material.emissive = new THREE.Color(0x444466);
+                            child.material.emissiveIntensity = 0.03;
+                        }
+                    }
+                });
+            }
+
+            return group;
+        }
+
+        // ============================================================
+        //  چیدمان و مدیریت مهره‌ها
+        // ============================================================
+
+        const pieceLayout = [
+            ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'],
+            ['pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn'],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            ['pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn', 'pawn'],
+            ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook']
+        ];
+
+        let pieceObjects = [];
+        let selectedPiece = null;
+        let validMoves = [];
+        let highlightTiles = [];
+        let currentTurn = 'white';
+
+        function getTilePosition(row, col) {
+            const x = col - 3.5;
+            const z = row - 3.5;
+            return { x, z };
+        }
+
+        function getPieceAt(row, col) {
+            for (let p of pieceObjects) {
+                if (p.userData.row === row && p.userData.col === col) {
+                    return p;
+                }
+            }
+            return null;
+        }
+
+        function getValidMoves(row, col) {
+            const piece = getPieceAt(row, col);
+            if (!piece) return [];
+            const type = piece.userData.type;
+            const isWhite = piece.userData.isWhite;
+            const moves = [];
+
+            const dir = isWhite ? 1 : -1;
+
+            switch (type) {
+                case 'pawn':
+                    const newRow = row + dir;
+                    if (newRow >= 0 && newRow < 8) {
+                        if (!getPieceAt(newRow, col)) {
+                            moves.push({ row: newRow, col });
+                        }
+                        if ((isWhite && row === 1) || (!isWhite && row === 6)) {
+                            const newRow2 = row + 2 * dir;
+                            if (!getPieceAt(newRow2, col) && !getPieceAt(newRow, col)) {
+                                moves.push({ row: newRow2, col });
+                            }
+                        }
+                        for (let dc of [-1, 1]) {
+                            const nc = col + dc;
+                            if (nc >= 0 && nc < 8) {
+                                const target = getPieceAt(newRow, nc);
+                                if (target && target.userData.isWhite !== isWhite) {
+                                    moves.push({ row: newRow, col: nc });
+                                }
+                            }
+                        }
+                    }
+                    break;
+
+                case 'rook':
+                    for (let d of [
+                            [-1, 0],
+                            [1, 0],
+                            [0, -1],
+                            [0, 1]
+                        ]) {
+                        for (let i = 1; i < 8; i++) {
+                            const nr = row + d[0] * i;
+                            const nc = col + d[1] * i;
+                            if (nr < 0 || nr > 7 || nc < 0 || nc > 7) break;
+                            const target = getPieceAt(nr, nc);
+                            if (target) {
+                                if (target.userData.isWhite !== isWhite) {
+                                    moves.push({ row: nr, col: nc });
+                                }
+                                break;
+                            }
+                            moves.push({ row: nr, col: nc });
+                        }
+                    }
+                    break;
+
+                case 'bishop':
+                    for (let d of [
+                            [-1, -1],
+                            [-1, 1],
+                            [1, -1],
+                            [1, 1]
+                        ]) {
+                        for (let i = 1; i < 8; i++) {
+                            const nr = row + d[0] * i;
+                            const nc = col + d[1] * i;
+                            if (nr < 0 || nr > 7 || nc < 0 || nc > 7) break;
+                            const target = getPieceAt(nr, nc);
+                            if (target) {
+                                if (target.userData.isWhite !== isWhite) {
+                                    moves.push({ row: nr, col: nc });
+                                }
+                                break;
+                            }
+                            moves.push({ row: nr, col: nc });
+                        }
+                    }
+                    break;
+
+                case 'queen':
+                    for (let d of [
+                            [-1, 0],
+                            [1, 0],
+                            [0, -1],
+                            [0, 1],
+                            [-1, -1],
+                            [-1, 1],
+                            [1, -1],
+                            [1, 1]
+                        ]) {
+                        for (let i = 1; i < 8; i++) {
+                            const nr = row + d[0] * i;
+                            const nc = col + d[1] * i;
+                            if (nr < 0 || nr > 7 || nc < 0 || nc > 7) break;
+                            const target = getPieceAt(nr, nc);
+                            if (target) {
+                                if (target.userData.isWhite !== isWhite) {
+                                    moves.push({ row: nr, col: nc });
+                                }
+                                break;
+                            }
+                            moves.push({ row: nr, col: nc });
+                        }
+                    }
+                    break;
+
+                case 'king':
+                    for (let d of [
+                            [-1, -1],
+                            [-1, 0],
+                            [-1, 1],
+                            [0, -1],
+                            [0, 1],
+                            [1, -1],
+                            [1, 0],
+                            [1, 1]
+                        ]) {
+                        const nr = row + d[0];
+                        const nc = col + d[1];
+                        if (nr < 0 || nr > 7 || nc < 0 || nc > 7) continue;
+                        const target = getPieceAt(nr, nc);
+                        if (!target || target.userData.isWhite !== isWhite) {
+                            moves.push({ row: nr, col: nc });
+                        }
+                    }
+                    break;
+
+                case 'knight':
+                    for (let d of [
+                            [-2, -1],
+                            [-2, 1],
+                            [-1, -2],
+                            [-1, 2],
+                            [1, -2],
+                            [1, 2],
+                            [2, -1],
+                            [2, 1]
+                        ]) {
+                        const nr = row + d[0];
+                        const nc = col + d[1];
+                        if (nr < 0 || nr > 7 || nc < 0 || nc > 7) continue;
+                        const target = getPieceAt(nr, nc);
+                        if (!target || target.userData.isWhite !== isWhite) {
+                            moves.push({ row: nr, col: nc });
+                        }
+                    }
+                    break;
+            }
+
+            return moves;
+        }
+
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            const piece = getPieceAt(fromRow, fromCol);
+            if (!piece) return false;
+
+            const target = getPieceAt(toRow, toCol);
+            if (target) {
+                scene.remove(target);
+                const idx = pieceObjects.indexOf(target);
+                if (idx > -1) pieceObjects.splice(idx, 1);
+            }
+
+            const pos = getTilePosition(toRow, toCol);
+            piece.position.x = pos.x;
+            piece.position.z = pos.z;
+            piece.userData.row = toRow;
+            piece.userData.col = toCol;
+
+            return true;
+        }
+
+        function clearHighlights() {
+            for (let tile of highlightTiles) {
+                if (tile.parent) {
+                    tile.parent.remove(tile);
+                }
+            }
+            highlightTiles = [];
+            for (let tile of tiles) {
+                const isDark = tile.userData.isDark;
+                tile.material = isDark ? darkWoodMat : lightWoodMat;
+            }
+        }
+
+        function showHighlights(moves) {
+            clearHighlights();
+            for (let m of moves) {
+                const tile = tiles.find(t => t.userData.row === m.row && t.userData.col === m.col);
+                if (tile) {
+                    const isTarget = getPieceAt(m.row, m.col) !== null;
+                    tile.material = isTarget ? selectMat : highlightMat;
+                }
+
+                const pos = getTilePosition(m.row, m.col);
+                const isTarget = getPieceAt(m.row, m.col) !== null;
+                const marker = new THREE.Mesh(
+                    new THREE.RingGeometry(0.3, 0.4, 24),
+                    new THREE.MeshStandardMaterial({
+                        color: isTarget ? 0xff4444 : 0x44ff88,
+                        transparent: true,
+                        opacity: 0.6,
+                        emissive: isTarget ? 0xff4444 : 0x44ff88,
+                        emissiveIntensity: 0.2,
+                        side: THREE.DoubleSide,
+                    })
+                );
+                marker.rotation.x = -Math.PI / 2;
+                marker.position.set(pos.x, 0.02, pos.z);
+                scene.add(marker);
+                highlightTiles.push(marker);
+            }
+        }
+
+        // ============================================================
+        //  راه‌اندازی اولیه مهره‌ها
+        // ============================================================
+
+        function initPieces() {
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const type = pieceLayout[row][col];
+                    if (type) {
+                        const isWhite = row < 2;
+                        const pos = getTilePosition(row, col);
+                        const piece = createPiece(type, isWhite, pos.x, pos.z);
+                        piece.userData.row = row;
+                        piece.userData.col = col;
+                        scene.add(piece);
+                        pieceObjects.push(piece);
+                    }
+                }
+            }
+        }
+
+        initPieces();
+
+        // ============================================================
+        //  رویدادهای کلیک (جداسازی از OrbitControls)
+        // ============================================================
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let mouseDownPos = { x: 0, y: 0 };
+        let isDragging = false;
+
+        renderer.domElement.addEventListener('pointerdown', (event) => {
+            mouseDownPos.x = event.clientX;
+            mouseDownPos.y = event.clientY;
+            isDragging = false;
+        });
+
+        renderer.domElement.addEventListener('pointermove', (event) => {
+            const dx = event.clientX - mouseDownPos.x;
+            const dy = event.clientY - mouseDownPos.y;
+            if (Math.sqrt(dx * dx + dy * dy) > 5) {
+                isDragging = true;
+            }
+        });
+
+        renderer.domElement.addEventListener('pointerup', (event) => {
+            if (isDragging) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            const clientX = event.clientX;
+            const clientY = event.clientY;
+
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // ۱) بررسی کلیک روی مهره‌ها
+            const allMeshes = [];
+            for (let p of pieceObjects) {
+                p.traverse((child) => {
+                    if (child.isMesh) {
+                        allMeshes.push({ mesh: child, piece: p });
+                    }
+                });
+            }
+
+            const meshIntersects = raycaster.intersectObjects(allMeshes.map(m => m.mesh));
+
+            if (meshIntersects.length > 0) {
+                let clickedPiece = null;
+                for (let hit of meshIntersects) {
+                    for (let item of allMeshes) {
+                        if (item.mesh === hit.object) {
+                            clickedPiece = item.piece;
+                            break;
+                        }
+                    }
+                    if (clickedPiece) break;
+                }
+
+                if (clickedPiece) {
+                    const row = clickedPiece.userData.row;
+                    const col = clickedPiece.userData.col;
+                    const isWhite = clickedPiece.userData.isWhite;
+
+                    if ((currentTurn === 'white' && isWhite) || (currentTurn === 'black' && !isWhite)) {
+                        selectedPiece = clickedPiece;
+                        const moves = getValidMoves(row, col);
+                        validMoves = moves;
+                        showHighlights(moves);
+                        updateTurnDisplay();
+                        return;
+                    }
+                }
+            }
+
+            // ۲) بررسی کلیک روی خانه‌های هایلایت شده (حرکت)
+            if (selectedPiece) {
+                const fromRow = selectedPiece.userData.row;
+                const fromCol = selectedPiece.userData.col;
+
+                const tileIntersects = raycaster.intersectObjects(tiles);
+                if (tileIntersects.length > 0) {
+                    const tile = tileIntersects[0].object;
+                    const toRow = tile.userData.row;
+                    const toCol = tile.userData.col;
+
+                    const isValid = validMoves.some(m => m.row === toRow && m.col === toCol);
+                    if (isValid) {
+                        movePiece(fromRow, fromCol, toRow, toCol);
+                        currentTurn = currentTurn === 'white' ? 'black' : 'white';
+                        clearHighlights();
+                        selectedPiece = null;
+                        validMoves = [];
+                        updateTurnDisplay();
+                        return;
+                    }
+                }
+
+                // اگر روی جای دیگه کلیک شد، انتخاب لغو بشه
+                clearHighlights();
+                selectedPiece = null;
+                validMoves = [];
+            }
+        });
+
+        // ============================================================
+        //  نمایش نوبت
+        // ============================================================
+
+        function updateTurnDisplay() {
+            const turnColor = document.getElementById('turnColor');
+            const turnText = document.getElementById('turnText');
+            if (currentTurn === 'white') {
+                turnColor.className = 'turn-color white';
+                turnText.textContent = "White's Turn";
+            } else {
+                turnColor.className = 'turn-color black';
+                turnText.textContent = "Black's Turn";
+            }
+        }
+
+        // ============================================================
+        //  ذرات و کف
+        // ============================================================
+
+        const particleCount = 300;
+        const particleGeo = new THREE.BufferGeometry();
+        const particlePos = new Float32Array(particleCount * 3);
+        const particleSizes = new Float32Array(particleCount);
+
+        for (let i = 0; i < particleCount; i++) {
+            const radius = 3 + Math.random() * 5;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI - Math.PI / 2;
+            particlePos[i * 3] = Math.cos(theta) * Math.cos(phi) * radius;
+            particlePos[i * 3 + 1] = Math.sin(phi) * radius * 0.5 + 2;
+            particlePos[i * 3 + 2] = Math.sin(theta) * Math.cos(phi) * radius;
+            particleSizes[i] = 0.02 + Math.random() * 0.06;
+        }
+
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+        particleGeo.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+
+        const particleMat = new THREE.PointsMaterial({
+            color: 0xd4af37,
+            size: 0.04,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+
+        const particles = new THREE.Points(particleGeo, particleMat);
+        scene.add(particles);
+
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0x0a0a12,
+            roughness: 0.1,
+            metalness: 0.9,
+            transparent: true,
+            opacity: 0.3,
+            envMapIntensity: 1.5,
+        });
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(20, 20),
+            floorMat
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.3;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // ============================================================
+        //  انیمیشن
+        // ============================================================
+
+        let time = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            time += 0.005;
+            particles.rotation.y = time * 0.03;
+
+            const pulse = 0.5 + 0.5 * Math.sin(time * 0.5);
+            pointLight.intensity = 0.3 + pulse * 0.3;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // ============================================================
+        //  ریسپانسیو
+        // ============================================================
+
+        window.addEventListener('resize', () => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        });
+
+        // ============================================================
+        //  شروع
+        // ============================================================
+
+        updateTurnDisplay();
+        console.log('♟️ 3D Chess loaded! Click a piece to select, click green to move.');
+        console.log(`📦 ${pieceObjects.length} pieces on the board`);
+    </script>
+
+</body>
+</html>
