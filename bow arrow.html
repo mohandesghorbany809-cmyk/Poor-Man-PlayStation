@@ -1,0 +1,545 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Archery Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      background: linear-gradient(145deg, #1a2a3a, #0f1a24);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      touch-action: none;
+    }
+    .game-wrapper {
+      background: #2d4b5c;
+      padding: 20px 20px 30px;
+      border-radius: 48px;
+      box-shadow: 0 25px 40px rgba(0,0,0,0.7), inset 0 1px 4px rgba(255,255,255,0.08);
+      backdrop-filter: blur(2px);
+    }
+    canvas {
+      display: block;
+      width: 800px;
+      max-width: 100%;
+      height: auto;
+      aspect-ratio: 800 / 450;
+      background: radial-gradient(circle at 20% 30%, #87CEEB, #3b7a9e);
+      border-radius: 28px;
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 12px 20px rgba(0,0,0,0.6);
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      padding: 0 6px;
+      color: #e9f2e9;
+      text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+      font-weight: 500;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .score-box {
+      background: #1d2f3b;
+      padding: 8px 22px;
+      border-radius: 40px;
+      font-size: 1.5rem;
+      letter-spacing: 1px;
+      box-shadow: inset 0 3px 8px rgba(0,0,0,0.6), 0 4px 6px rgba(0,0,0,0.3);
+      backdrop-filter: blur(4px);
+      border: 1px solid #4c7a8c;
+    }
+    .score-box span {
+      color: #f5d742;
+      font-weight: bold;
+      margin-left: 6px;
+    }
+    button {
+      background: #d9b650;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 60px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #1a2a2f;
+      box-shadow: 0 8px 0 #8f6f2a, 0 6px 14px rgba(0,0,0,0.4);
+      cursor: pointer;
+      transition: all 0.08s linear;
+      letter-spacing: 0.5px;
+      touch-action: manipulation;
+      border: 1px solid #f3e08b;
+    }
+    button:active {
+      transform: translateY(7px);
+      box-shadow: 0 1px 0 #6b4f1e;
+    }
+    .hint {
+      font-size: 1rem;
+      background: #1f3540;
+      padding: 6px 18px;
+      border-radius: 40px;
+      border-left: 3px solid #d9b650;
+      opacity: 0.9;
+    }
+    @media (max-width: 600px) {
+      .game-wrapper { padding: 12px; }
+      .score-box { font-size: 1.2rem; padding: 6px 16px; }
+      button { padding: 8px 18px; font-size: 1rem; }
+      .hint { font-size: 0.8rem; padding: 4px 14px; }
+    }
+  </style>
+</head>
+<body>
+<div class="game-wrapper">
+  <canvas id="gameCanvas" width="800" height="450"></canvas>
+  <div class="controls">
+    <div class="score-box">🎯 <span id="scoreDisplay">0</span></div>
+    <button id="resetBtn">↻ Restart</button>
+    <div class="hint">👇 Drag & Release</div>
+  </div>
+</div>
+<script>
+  (function(){
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreSpan = document.getElementById('scoreDisplay');
+
+    const CW = 800, CH = 450;
+    let score = 0;
+    let arrow = null;
+    let target = { x: 0, y: 0, radius: 28, hit: false };
+
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let currentX = 0, currentY = 0;
+
+    const BOW_X = 130;
+    const BOW_Y = 330;
+    const BOW_SIZE = 55;
+
+    function resetTarget() {
+      const margin = 50;
+      target.x = Math.random() * (CW - 2 * margin) + margin;
+      target.y = Math.random() * (CH - 2 * margin - 40) + margin + 20;
+      target.radius = 26 + Math.floor(Math.random() * 14);
+      target.hit = false;
+    }
+
+    function resetGame() {
+      score = 0;
+      updateScore();
+      arrow = null;
+      resetTarget();
+      isDragging = false;
+    }
+
+    function updateScore() {
+      scoreSpan.textContent = score;
+    }
+
+    function checkArrowTarget(arrowPos) {
+      if (!arrowPos || target.hit) return false;
+      const dx = arrowPos.x - target.x;
+      const dy = arrowPos.y - target.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < target.radius) {
+        target.hit = true;
+        score++;
+        updateScore();
+        setTimeout(() => resetTarget(), 300);
+        return true;
+      }
+      return false;
+    }
+
+    function shootArrow(fromX, fromY, toX, toY) {
+      const dx = fromX - toX;
+      const dy = fromY - toY;
+      const len = Math.hypot(dx, dy);
+      if (len < 10) return false;
+
+      const power = Math.min(len * 0.22, 22);
+      const angle = Math.atan2(dy, dx);
+
+      arrow = {
+        x: fromX,
+        y: fromY,
+        vx: Math.cos(angle) * power,
+        vy: Math.sin(angle) * power,
+        active: true,
+        trail: []
+      };
+      return true;
+    }
+
+    function updateArrow() {
+      if (!arrow || !arrow.active) return;
+
+      arrow.trail.push({ x: arrow.x, y: arrow.y });
+      if (arrow.trail.length > 12) arrow.trail.shift();
+
+      arrow.x += arrow.vx;
+      arrow.y += arrow.vy;
+      arrow.vy += 0.28;
+
+      const r = 7;
+      if (arrow.x - r < 0) { arrow.x = r; arrow.vx = -arrow.vx * 0.6; }
+      if (arrow.x + r > CW) { arrow.x = CW - r; arrow.vx = -arrow.vx * 0.6; }
+      if (arrow.y - r < 0) { arrow.y = r; arrow.vy = -arrow.vy * 0.6; }
+      if (arrow.y + r > CH) { arrow.y = CH - r; arrow.vy = -arrow.vy * 0.6; }
+
+      arrow.vx *= 0.993;
+      arrow.vy *= 0.993;
+
+      const hit = checkArrowTarget(arrow);
+      if (hit) {
+        arrow.active = false;
+        return;
+      }
+
+      const speed = Math.hypot(arrow.vx, arrow.vy);
+      if (speed < 0.25 && arrow.y > CH - 20) {
+        arrow.active = false;
+        arrow.vx = 0; arrow.vy = 0;
+      }
+      if (arrow.y > CH + 30) arrow.active = false;
+    }
+
+    function drawBow(pullX, pullY) {
+      const cx = BOW_X;
+      const cy = BOW_Y;
+      const size = BOW_SIZE;
+
+      const topX = cx + 8;
+      const topY = cy - size;
+      const botX = cx + 8;
+      const botY = cy + size;
+
+      let stringMidX = cx - 15;
+      let stringMidY = cy;
+      if (isDragging) {
+        stringMidX = Math.max(pullX, cx - 70);
+        stringMidY = pullY;
+        const dx = stringMidX - cx;
+        const dy = stringMidY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 90) {
+          stringMidX = cx + (dx/dist) * 90;
+          stringMidY = cy + (dy/dist) * 90;
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Outer bow
+      ctx.beginPath();
+      ctx.moveTo(topX, topY);
+      ctx.quadraticCurveTo(cx + 45, cy - 20, cx + 38, cy);
+      ctx.quadraticCurveTo(cx + 45, cy + 20, botX, botY);
+      ctx.strokeStyle = '#5a3a1a';
+      ctx.lineWidth = 14;
+      ctx.stroke();
+
+      // Inner bow
+      ctx.beginPath();
+      ctx.moveTo(topX - 6, topY + 4);
+      ctx.quadraticCurveTo(cx + 28, cy - 12, cx + 22, cy);
+      ctx.quadraticCurveTo(cx + 28, cy + 12, botX - 6, botY - 4);
+      ctx.strokeStyle = '#8b6b3a';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      // Bowstring
+      ctx.beginPath();
+      ctx.moveTo(topX + 2, topY + 2);
+      
+      if (isDragging) {
+        ctx.quadraticCurveTo(stringMidX, stringMidY, botX + 2, botY - 2);
+      } else {
+        ctx.lineTo(botX + 2, botY - 2);
+      }
+      ctx.strokeStyle = '#d4c4a0';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Grip
+      const gripX = cx + 10;
+      const gripY = cy;
+      ctx.shadowColor = 'rgba(0,0,0,0.4)';
+      ctx.shadowBlur = 8;
+
+      const grad = ctx.createRadialGradient(gripX+2, gripY-4, 2, gripX, gripY, 16);
+      grad.addColorStop(0, '#a07d4a');
+      grad.addColorStop(1, '#4d3218');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(gripX, gripY, 10, 16, -0.15, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#2a1a0a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(gripX, gripY, 10, 16, -0.15, 0, Math.PI*2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#c49a5a';
+      ctx.beginPath();
+      ctx.arc(gripX, gripY, 4, 0, Math.PI*2);
+      ctx.fill();
+
+      // Arrow on string when dragging
+      if (isDragging) {
+        const angle = Math.atan2(stringMidY - cy, stringMidX - cx);
+        const arrowLen = 38;
+        const tipX = stringMidX + Math.cos(angle) * arrowLen;
+        const tipY = stringMidY + Math.sin(angle) * arrowLen;
+
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = 'rgba(255,200,100,0.2)';
+        ctx.fillStyle = '#3d2817';
+        ctx.beginPath();
+        ctx.ellipse(stringMidX, stringMidY, 16, 3.5, angle, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = '#b0a090';
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 5, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = '#8a7a6a';
+        ctx.beginPath();
+        ctx.ellipse(stringMidX - Math.cos(angle)*14, stringMidY - Math.sin(angle)*14, 5, 8, angle, 0, Math.PI*2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // Ready arrow on bow
+      if (!arrow && !isDragging) {
+        const angle = 0.15;
+        const arrowLen = 32;
+        const startX = cx - 8;
+        const startY = cy + 2;
+        const tipX = startX + Math.cos(angle) * arrowLen;
+        const tipY = startY + Math.sin(angle) * arrowLen;
+
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = 'rgba(0,0,0,0.2)';
+        ctx.fillStyle = '#3d2817';
+        ctx.beginPath();
+        ctx.ellipse(startX, startY, 14, 3, angle, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = '#b0a090';
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 4, 0, Math.PI*2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    function drawScene() {
+      ctx.clearRect(0, 0, CW, CH);
+
+      // Ground
+      ctx.fillStyle = '#3f8c4b';
+      ctx.beginPath();
+      ctx.rect(0, CH-20, CW, 30);
+      ctx.fill();
+      ctx.fillStyle = '#5fa85c';
+      for (let i=0; i<CW; i+=12) {
+        ctx.beginPath();
+        ctx.moveTo(i, CH-22);
+        ctx.lineTo(i+6, CH-36);
+        ctx.lineTo(i+12, CH-22);
+        ctx.fill();
+      }
+
+      // Target
+      if (!target.hit) {
+        ctx.shadowColor = 'rgba(255,200,50,0.3)';
+        ctx.shadowBlur = 22;
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius, 0, Math.PI*2);
+        ctx.fillStyle = '#e63e3e';
+        ctx.fill();
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius*0.7, 0, Math.PI*2);
+        ctx.fillStyle = '#f5f0e0';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius*0.35, 0, Math.PI*2);
+        ctx.fillStyle = '#e63e3e';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, 6, 0, Math.PI*2);
+        ctx.fillStyle = '#222';
+        ctx.fill();
+      } else {
+        ctx.fillStyle = 'rgba(255,215,0,0.3)';
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius+6, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // Bow
+      drawBow(currentX, currentY);
+
+      // Flying arrow
+      if (arrow && arrow.active) {
+        for (let i=0; i<arrow.trail.length; i++) {
+          const alpha = i / arrow.trail.length * 0.7;
+          ctx.beginPath();
+          ctx.arc(arrow.trail[i].x, arrow.trail[i].y, 4 * (i/arrow.trail.length), 0, 2*Math.PI);
+          ctx.fillStyle = `rgba(255, 220, 140, ${alpha*0.5})`;
+          ctx.fill();
+        }
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = 'rgba(255,200,100,0.3)';
+        ctx.fillStyle = '#3d2817';
+        ctx.beginPath();
+        ctx.ellipse(arrow.x, arrow.y, 12, 3, Math.atan2(arrow.vy, arrow.vx), 0, 2*Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#b0a090';
+        ctx.beginPath();
+        ctx.arc(arrow.x + 12*Math.cos(Math.atan2(arrow.vy, arrow.vx)),
+                arrow.y + 12*Math.sin(Math.atan2(arrow.vy, arrow.vx)), 5, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (arrow && !arrow.active && !target.hit) {
+        ctx.fillStyle = '#5f4a33';
+        ctx.beginPath();
+        ctx.ellipse(arrow.x, arrow.y, 9, 3, 0, 0, 2*Math.PI);
+        ctx.fill();
+      }
+
+      // Guide line
+      if (isDragging) {
+        ctx.beginPath();
+        ctx.moveTo(BOW_X, BOW_Y);
+        ctx.lineTo(currentX, currentY);
+        ctx.strokeStyle = 'rgba(255,255,200,0.15)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 8]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const dx = currentX - BOW_X;
+        const dy = currentY - BOW_Y;
+        const power = Math.min(Math.hypot(dx, dy) * 0.22, 22);
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,200,0.7)';
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 6;
+        ctx.fillText(`💪 ${Math.round(power * 100 / 22)}%`, currentX+10, currentY-10);
+        ctx.shadowBlur = 0;
+      }
+
+      if (target.hit) {
+        ctx.font = 'bold 26px "Segoe UI", sans-serif';
+        ctx.fillStyle = '#fadf8a';
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 12;
+        ctx.fillText('🎯 +1', target.x-48, target.y-40);
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    function gameLoop() {
+      if (arrow && arrow.active) updateArrow();
+      drawScene();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      let clientX, clientY;
+      if (e.touches) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+        e.preventDefault();
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    function onPointerDown(e) {
+      e.preventDefault();
+      if (arrow && arrow.active) return;
+      const pos = getCanvasCoords(e);
+      const dist = Math.hypot(pos.x - BOW_X, pos.y - BOW_Y);
+      if (dist > 130) return;
+
+      isDragging = true;
+      startX = BOW_X;
+      startY = BOW_Y;
+      currentX = pos.x;
+      currentY = pos.y;
+    }
+
+    function onPointerMove(e) {
+      e.preventDefault();
+      if (!isDragging) return;
+      const pos = getCanvasCoords(e);
+      currentX = Math.min(Math.max(pos.x, 10), CW-10);
+      currentY = Math.min(Math.max(pos.y, 10), CH-20);
+    }
+
+    function onPointerUp(e) {
+      e.preventDefault();
+      if (!isDragging) return;
+      isDragging = false;
+
+      if (!arrow || !arrow.active) {
+        const dx = currentX - startX;
+        const dy = currentY - startY;
+        const len = Math.hypot(dx, dy);
+        if (len > 15) {
+          shootArrow(startX, startY, currentX, currentY);
+        }
+      }
+    }
+
+    canvas.addEventListener('mousedown', onPointerDown);
+    canvas.addEventListener('mousemove', onPointerMove);
+    canvas.addEventListener('mouseup', onPointerUp);
+    canvas.addEventListener('mouseleave', (e) => {
+      if (isDragging) onPointerUp(e);
+    });
+
+    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+    canvas.addEventListener('touchmove', onPointerMove, { passive: false });
+    canvas.addEventListener('touchend', onPointerUp, { passive: false });
+    canvas.addEventListener('touchcancel', onPointerUp, { passive: false });
+
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+    resetGame();
+    gameLoop();
+  })();
+</script>
+</body>
+</html>
