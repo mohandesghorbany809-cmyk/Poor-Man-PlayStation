@@ -1,0 +1,520 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>🧠 Memory 3D</title>
+    <style>
+        /* ─── Reset & Base ─── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 16px;
+            touch-action: manipulation;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            color: #fff;
+            padding: 12px 8px 20px;
+        }
+
+        /* ─── Header ─── */
+        h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            text-shadow: 0 0 30px rgba(80, 80, 255, 0.25);
+        }
+
+        .sub {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.95rem;
+            margin-bottom: 18px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ─── Stats Bar ─── */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .stats span {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(4px);
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .stats span b {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Timer warning */
+        .stats .timer-warning {
+            color: #ff6b6b;
+            border-color: rgba(255, 80, 80, 0.2);
+            background: rgba(255, 80, 80, 0.1);
+        }
+
+        /* ─── Grid ─── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 14px 0 20px;
+        }
+
+        /* ─── Card ─── */
+        .card {
+            aspect-ratio: 1 / 1;
+            background: linear-gradient(145deg, #2a2a5a, #1a1a3a);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.6rem;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+            border: 2px solid rgba(255, 255, 255, 0.04);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            will-change: transform;
+            position: relative;
+        }
+
+        .card:active:not(.flipped):not(.matched) {
+            transform: scale(0.93);
+        }
+
+        /* Flipped state */
+        .card.flipped {
+            background: linear-gradient(145deg, #4a4a8a, #3a3a7a);
+            transform: rotateY(180deg);
+            border-color: rgba(120, 120, 255, 0.25);
+            box-shadow: 0 8px 32px rgba(80, 80, 255, 0.15);
+        }
+
+        /* Matched state */
+        .card.matched {
+            background: linear-gradient(145deg, #1a6a3a, #0a4a2a);
+            border-color: rgba(0, 255, 120, 0.25);
+            transform: scale(0.94);
+            cursor: default;
+            box-shadow: 0 8px 28px rgba(0, 255, 120, 0.08);
+            pointer-events: none;
+        }
+
+        /* ─── Status ─── */
+        #status {
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.75);
+            margin: 14px 0 18px;
+            min-height: 2.2rem;
+            transition: color 0.2s;
+        }
+
+        #status.win {
+            color: #69db7c;
+        }
+
+        #status.lose {
+            color: #ff6b6b;
+        }
+
+        /* ─── Reset Button ─── */
+        #reset {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1.5px solid rgba(255, 255, 255, 0.10);
+            color: #fff;
+            padding: 12px 44px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            backdrop-filter: blur(8px);
+            letter-spacing: 0.3px;
+            touch-action: manipulation;
+        }
+
+        #reset:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.20);
+        }
+
+        #reset:active {
+            transform: scale(0.95);
+        }
+
+        /* ─── Game Over Overlay ─── */
+        #gameover-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 30px;
+        }
+
+        #gameover-overlay.show {
+            display: flex;
+        }
+
+        #gameover-overlay .icon {
+            font-size: 4.5rem;
+            margin-bottom: 10px;
+        }
+
+        #gameover-overlay h2 {
+            font-size: 2.4rem;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        #gameover-overlay p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+
+        #gameover-overlay .highlight {
+            color: #69db7c;
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+
+        #gameover-overlay .highlight.lose {
+            color: #ff6b6b;
+        }
+
+        #gameover-overlay .btn-restart {
+            margin-top: 25px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 14px 50px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        #gameover-overlay .btn-restart:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🧠 Memory 3D</h1>
+        <p class="sub">Find the matching pairs before time runs out!</p>
+
+        <div class="stats">
+            <span>🎯 Moves: <b id="moves">0</b></span>
+            <span id="timer-display">⏱️ <b id="timer">40</b>s</span>
+            <span>🏆 Pairs: <b id="pairs">0</b>/8</span>
+        </div>
+
+        <div class="grid" id="grid"></div>
+
+        <div id="status">🔍 Pick a card...</div>
+
+        <button id="reset">🔄 New Game</button>
+    </div>
+
+    <!-- ─── Game Over Overlay ─── -->
+    <div id="gameover-overlay">
+        <div class="icon" id="result-icon">🎉</div>
+        <h2 id="result-title">You Win!</h2>
+        <p id="result-sub">Pairs matched: <span class="highlight" id="result-pairs">0</span>/8</p>
+        <p id="result-moves">Moves: <span id="result-moves-count">0</span></p>
+        <button class="btn-restart" id="overlay-restart">🔄 Play Again</button>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ─── Configuration ───
+            const TOTAL_PAIRS = 8;
+            const TOTAL_TIME = 40; // seconds
+            const EMOJIS = ['🚀', '⭐', '🌈', '🔥', '🎯', '💎', '🌟', '🎮'];
+
+            // ─── State ───
+            let cards = [];
+            let flippedIndices = [];
+            let matchedIndices = [];
+            let moves = 0;
+            let pairsMatched = 0;
+            let timeLeft = TOTAL_TIME;
+            let timerInterval = null;
+            let isLocked = false;
+            let gameActive = true;
+            let isGameOverTriggered = false;
+
+            // ─── DOM Elements ───
+            const gridEl = document.getElementById('grid');
+            const movesEl = document.getElementById('moves');
+            const timerEl = document.getElementById('timer');
+            const timerDisplay = document.getElementById('timer-display');
+            const pairsEl = document.getElementById('pairs');
+            const statusEl = document.getElementById('status');
+            const resetBtn = document.getElementById('reset');
+
+            // Overlay elements
+            const overlay = document.getElementById('gameover-overlay');
+            const resultIcon = document.getElementById('result-icon');
+            const resultTitle = document.getElementById('result-title');
+            const resultPairs = document.getElementById('result-pairs');
+            const resultMoves = document.getElementById('result-moves-count');
+            const overlayRestart = document.getElementById('overlay-restart');
+
+            // ─── Helpers ───
+            function shuffle(arr) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            // ─── Timer ───
+            function startTimer() {
+                clearInterval(timerInterval);
+                timeLeft = TOTAL_TIME;
+                timerEl.textContent = timeLeft;
+                timerDisplay.classList.remove('timer-warning');
+                gameActive = true;
+                isGameOverTriggered = false;
+
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerEl.textContent = timeLeft;
+
+                    if (timeLeft <= 10) {
+                        timerDisplay.classList.add('timer-warning');
+                    }
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        timerEl.textContent = '0';
+                        // Time's up -- lose
+                        if (!isGameOverTriggered) {
+                            isGameOverTriggered = true;
+                            gameActive = false;
+                            showGameOver(false);
+                        }
+                    }
+                }, 1000);
+            }
+
+            // ─── Render Grid ───
+            function render() {
+                gridEl.innerHTML = cards.map((card, index) => {
+                    const isFlipped = flippedIndices.includes(index) || matchedIndices.includes(index);
+                    const isMatched = matchedIndices.includes(index);
+                    const content = isFlipped ? card.emoji : '❓';
+                    const flippedClass = isFlipped ? 'flipped' : '';
+                    const matchedClass = isMatched ? 'matched' : '';
+                    const pointerEvents = isMatched ? 'style="pointer-events:none"' : '';
+                    return `<div class="card ${flippedClass} ${matchedClass}" data-index="${index}" ${pointerEvents}>${content}</div>`;
+                }).join('');
+            }
+
+            // ─── Check Win ───
+            function checkWin() {
+                if (pairsMatched === TOTAL_PAIRS && gameActive) {
+                    gameActive = false;
+                    clearInterval(timerInterval);
+                    showGameOver(true);
+                    return true;
+                }
+                return false;
+            }
+
+            // ─── Show Game Over ───
+            function showGameOver(won) {
+                overlay.classList.add('show');
+                if (won) {
+                    resultIcon.textContent = '🎉';
+                    resultTitle.textContent = 'You Win!';
+                    resultTitle.style.color = '#69db7c';
+                    resultPairs.className = 'highlight';
+                    statusEl.textContent = `🎉 You won! Time: ${TOTAL_TIME - timeLeft}s · Moves: ${moves}`;
+                    statusEl.className = 'win';
+                } else {
+                    resultIcon.textContent = '⏰';
+                    resultTitle.textContent = 'Time\'s Up!';
+                    resultTitle.style.color = '#ff6b6b';
+                    resultPairs.className = 'highlight lose';
+                    statusEl.textContent = `⏰ Time\'s up! You matched ${pairsMatched}/${TOTAL_PAIRS} pairs.`;
+                    statusEl.className = 'lose';
+                }
+                resultPairs.textContent = pairsMatched;
+                resultMoves.textContent = moves;
+                isLocked = true; // block any further clicks
+            }
+
+            // ─── Hide Overlay ───
+            function hideOverlay() {
+                overlay.classList.remove('show');
+            }
+
+            // ─── Init / Reset Game ───
+            function initGame() {
+                // Clear timer
+                clearInterval(timerInterval);
+
+                // Reset state
+                flippedIndices = [];
+                matchedIndices = [];
+                moves = 0;
+                pairsMatched = 0;
+                isLocked = false;
+                gameActive = true;
+                isGameOverTriggered = false;
+                timeLeft = TOTAL_TIME;
+
+                // Reset UI
+                hideOverlay();
+                movesEl.textContent = '0';
+                timerEl.textContent = TOTAL_TIME;
+                timerDisplay.classList.remove('timer-warning');
+                pairsEl.textContent = `0/${TOTAL_PAIRS}`;
+                statusEl.textContent = '🔍 Pick a card...';
+                statusEl.className = '';
+
+                // Create deck: 2 of each emoji
+                const deck = shuffle([...EMOJIS, ...EMOJIS]);
+                cards = deck.map((emoji, i) => ({
+                    id: i,
+                    emoji: emoji,
+                    matched: false
+                }));
+
+                render();
+
+                // Start timer
+                startTimer();
+            }
+
+            // ─── Handle Card Click ───
+            function handleCardClick(e) {
+                const cardEl = e.target.closest('.card');
+                if (!cardEl) return;
+                if (isLocked) return;
+                if (!gameActive) return;
+                if (isGameOverTriggered) return;
+
+                const index = parseInt(cardEl.dataset.index, 10);
+                if (isNaN(index)) return;
+
+                // Already flipped or matched
+                if (flippedIndices.includes(index)) return;
+                if (matchedIndices.includes(index)) return;
+
+                // Flip the card
+                flippedIndices.push(index);
+                moves++;
+                movesEl.textContent = moves;
+                render();
+
+                // If two cards are flipped, check for match
+                if (flippedIndices.length === 2) {
+                    isLocked = true;
+                    const [i1, i2] = flippedIndices;
+                    const card1 = cards[i1];
+                    const card2 = cards[i2];
+
+                    if (card1.emoji === card2.emoji) {
+                        // Match!
+                        matchedIndices.push(i1, i2);
+                        pairsMatched++;
+                        pairsEl.textContent = `${pairsMatched}/${TOTAL_PAIRS}`;
+                        statusEl.textContent = '✅ Match! Keep going!';
+                        flippedIndices = [];
+                        isLocked = false;
+                        render();
+
+                        // Check if player won
+                        if (checkWin()) {
+                            return;
+                        }
+                    } else {
+                        // No match -- flip back after delay
+                        statusEl.textContent = '❌ No match! Try again...';
+                        setTimeout(() => {
+                            flippedIndices = [];
+                            isLocked = false;
+                            render();
+                            if (gameActive && !isGameOverTriggered) {
+                                statusEl.textContent = '🔍 Keep going!';
+                            }
+                        }, 700);
+                    }
+                } else {
+                    statusEl.textContent = '🔍 Pick the second card...';
+                }
+            }
+
+            // ─── Event Listeners ───
+            gridEl.addEventListener('click', handleCardClick);
+
+            resetBtn.addEventListener('click', initGame);
+            overlayRestart.addEventListener('click', initGame);
+
+            // Also restart on overlay click (outside button) - optional
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    initGame();
+                }
+            });
+
+            // ─── Keyboard support ───
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'r' || e.key === 'R') {
+                    initGame();
+                }
+            });
+
+            // ─── Start the game ───
+            initGame();
+
+        })();
+    </script>
+
+</body>
+</html>
