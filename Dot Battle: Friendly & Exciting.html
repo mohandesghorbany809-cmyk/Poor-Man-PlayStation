@@ -1,0 +1,907 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Dots & Boxes 6×6</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 30% 20%, #1a1a2e, #16213e, #0f3460);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Tahoma', sans-serif;
+            padding: 16px;
+            margin: 0;
+            transition: background 0.8s ease;
+        }
+
+        body.winner-bg {
+            transition: background 0.8s ease;
+        }
+
+        .game-wrapper {
+            background: rgba(255, 215, 0, 0.08);
+            backdrop-filter: blur(8px);
+            padding: 20px 16px 25px;
+            border-radius: 50px 50px 35px 35px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9), 0 0 0 3px #f1c40f inset, 0 0 0 6px #2c3e50 inset;
+            max-width: 100%;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .game-container {
+            background: #1a2332cc;
+            padding: 14px 12px 12px;
+            border-radius: 40px 40px 25px 25px;
+            box-shadow: 0 8px 0 #0d1520, 0 20px 40px #000000bb;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #f1c40f;
+            text-shadow: 0 4px 0 #8e6b1a, 0 8px 20px #00000099;
+            margin-top: -6px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        h1 span {
+            background: #e74c3c;
+            padding: 0 14px;
+            border-radius: 100px;
+            font-size: 1rem;
+            color: white;
+            text-shadow: none;
+            box-shadow: 0 4px 0 #7a1a1a;
+        }
+
+        /* Setup Screen */
+        .setup-screen {
+            text-align: center;
+            padding: 20px 10px;
+        }
+
+        .setup-screen h2 {
+            color: #4fc3f7;
+            margin-bottom: 16px;
+            font-size: 1.4rem;
+        }
+
+        .player-count-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .player-count-btn {
+            padding: 10px 24px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #2a3a4a;
+            color: #aab;
+            box-shadow: 0 4px 0 #0d1520;
+        }
+
+        .player-count-btn:hover {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+
+        .player-count-btn.selected {
+            background: #f1c40f;
+            color: #1a2332;
+            box-shadow: 0 4px 0 #8e6b1a, 0 0 30px #f1c40f44;
+            transform: scale(1.05);
+        }
+
+        .start-btn {
+            padding: 12px 40px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 35px;
+            cursor: pointer;
+            background: #4ecdc4;
+            color: #1a2332;
+            box-shadow: 0 5px 0 #1a7a72, 0 0 30px #4ecdc444;
+            transition: 0.15s;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+
+        .start-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #1a7a72;
+        }
+
+        .setup-screen.hidden {
+            display: none;
+        }
+
+        .game-screen {
+            display: none;
+        }
+
+        .game-screen.active {
+            display: block;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 4px 12px;
+            margin-bottom: 8px;
+            background: #0d1520;
+            border-radius: 25px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .player-tag {
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 15px;
+            transition: 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .player-tag.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #f1c40f66;
+            border-color: #f1c40f;
+        }
+
+        .board-container {
+            display: flex;
+            justify-content: center;
+            padding: 6px;
+            background: #0d1520;
+            border-radius: 25px;
+            margin-bottom: 8px;
+            overflow: auto;
+        }
+
+        .board {
+            display: grid;
+            gap: 0;
+            background: #1a2332;
+            padding: 4px;
+            border-radius: 15px;
+            position: relative;
+        }
+
+        .row {
+            display: flex;
+        }
+
+        .dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            box-shadow: 0 0 8px #4fc3f788;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .h-line {
+            width: 34px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .h-line .line {
+            width: 28px;
+            height: 3px;
+            background: #3a4a5a;
+            border-radius: 3px;
+            transition: 0.1s;
+        }
+
+        .h-line .line:hover:not(.drawn) {
+            background: #f1c40f88;
+            transform: scaleY(2);
+        }
+
+        .h-line .line.drawn {
+            height: 5px;
+        }
+
+        .v-line {
+            width: 22px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .v-line .line {
+            width: 3px;
+            height: 28px;
+            background: #3a4a5a;
+            border-radius: 3px;
+            transition: 0.1s;
+        }
+
+        .v-line .line:hover:not(.drawn) {
+            background: #f1c40f88;
+            transform: scaleX(2);
+        }
+
+        .v-line .line.drawn {
+            width: 5px;
+        }
+
+        .box {
+            width: 34px;
+            height: 34px;
+            background: #1a2a36;
+            border-radius: 3px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 900;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .box.filled {
+            animation: boxPop 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+        }
+
+        @keyframes boxPop {
+            0% { transform: scale(0.5); }
+            60% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+
+        .score-panel {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 4px 12px;
+            background: #0d1520;
+            border-radius: 25px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .score-box {
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 15px;
+            background: #1a2332;
+            box-shadow: inset 0 2px 6px #00000088;
+            color: #ddd;
+        }
+
+        .score-box span {
+            font-size: 1.1rem;
+        }
+
+        .reset-btn {
+            background: #f1c40f;
+            border: none;
+            color: #0d1520;
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 3px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #8e6b1a;
+            transition: 0.06s linear;
+        }
+
+        .reset-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #8e6b1a;
+        }
+        .reset-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #aab;
+            text-shadow: 0 2px 8px #000000dd;
+            min-height: 1.4rem;
+        }
+
+        .winner-msg {
+            color: #f1c40f !important;
+            font-size: 1.2rem !important;
+            text-shadow: 0 0 30px #f1c40f88 !important;
+            animation: glowMsg 0.8s infinite alternate;
+        }
+
+        @keyframes glowMsg {
+            0% { text-shadow: 0 0 20px #f1c40f66; }
+            100% { text-shadow: 0 0 50px #f1c40fcc; }
+        }
+
+        @media (max-width: 550px) {
+            .dot { width: 16px; height: 16px; }
+            .h-line { width: 26px; height: 16px; }
+            .h-line .line { width: 20px; height: 2px; }
+            .v-line { width: 16px; height: 26px; }
+            .v-line .line { height: 20px; width: 2px; }
+            .box { width: 26px; height: 26px; font-size: 0.7rem; }
+            h1 { font-size: 1.4rem; }
+            .player-tag { font-size: 0.65rem; padding: 2px 8px; }
+            .score-box { font-size: 0.65rem; padding: 2px 8px; }
+            .reset-btn { font-size: 0.65rem; padding: 2px 12px; }
+            .message { font-size: 0.75rem; }
+            .player-count-btn { padding: 8px 16px; font-size: 0.9rem; }
+            .start-btn { padding: 10px 30px; font-size: 1.1rem; }
+        }
+
+        @media (max-width: 400px) {
+            .dot { width: 12px; height: 12px; }
+            .h-line { width: 20px; height: 12px; }
+            .h-line .line { width: 14px; height: 2px; }
+            .v-line { width: 12px; height: 20px; }
+            .v-line .line { height: 14px; width: 2px; }
+            .box { width: 20px; height: 20px; font-size: 0.5rem; }
+            .board { padding: 2px; }
+            .game-wrapper { padding: 10px 6px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <div class="game-container">
+        <h1>
+            📦 Dots & Boxes
+            <span>6×6</span>
+        </h1>
+
+        <!-- Setup Screen -->
+        <div id="setupScreen" class="setup-screen">
+            <h2>👥 How many players?</h2>
+            <div class="player-count-buttons">
+                <button class="player-count-btn" data-count="2">2 Players</button>
+                <button class="player-count-btn" data-count="3">3 Players</button>
+                <button class="player-count-btn" data-count="4">4 Players</button>
+            </div>
+            <button class="start-btn" id="startGameBtn">🚀 Start Game</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="game-screen">
+            <div class="player-info" id="playerInfo"></div>
+
+            <div class="board-container">
+                <div id="board" class="board"></div>
+            </div>
+
+            <div class="score-panel" id="scorePanel"></div>
+            <div id="message" class="message">🎮 Click on lines to draw them!</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---- Config ----
+        const GRID_SIZE = 6; // 6x6 boxes = 7x7 dots
+        const PLAYER_COLORS = [
+            { name: '🔴 Red', bg: '#ff6b6b', light: '#ff6b6b44', border: '#ff6b6b' },
+            { name: '🟢 Green', bg: '#4ecdc4', light: '#4ecdc444', border: '#4ecdc4' },
+            { name: '🔵 Blue', bg: '#4fc3f7', light: '#4fc3f744', border: '#4fc3f7' },
+            { name: '🟡 Yellow', bg: '#f1c40f', light: '#f1c40f44', border: '#f1c40f' }
+        ];
+
+        let numPlayers = 2;
+        let currentPlayer = 0;
+        let scores = [];
+        let boxes = [];
+        let hLines = [];
+        let vLines = [];
+        let isGameOver = false;
+        let isProcessing = false;
+        let aiRunning = false;
+
+        // DOM refs
+        const setupScreen = document.getElementById('setupScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const boardEl = document.getElementById('board');
+        const playerInfoEl = document.getElementById('playerInfo');
+        const scorePanelEl = document.getElementById('scorePanel');
+        const messageEl = document.getElementById('message');
+        const bodyEl = document.body;
+
+        // ---- Setup ----
+        document.querySelectorAll('.player-count-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.player-count-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                numPlayers = parseInt(this.dataset.count);
+            });
+        });
+        document.querySelector('.player-count-btn[data-count="2"]').classList.add('selected');
+
+        document.getElementById('startGameBtn').addEventListener('click', startGame);
+
+        // ---- Game Logic ----
+        function startGame() {
+            setupScreen.classList.add('hidden');
+            gameScreen.classList.add('active');
+
+            const size = GRID_SIZE;
+            const numBoxes = (size - 1) * (size - 1);
+            scores = new Array(numPlayers).fill(0);
+            currentPlayer = 0;
+            isGameOver = false;
+            isProcessing = false;
+            aiRunning = false;
+            bodyEl.style.background = 'radial-gradient(circle at 30% 20%, #1a1a2e, #16213e, #0f3460)';
+            bodyEl.className = '';
+
+            // Init boxes
+            boxes = [];
+            for (let r = 0; r < size - 1; r++) {
+                const row = [];
+                for (let c = 0; c < size - 1; c++) {
+                    row.push({ owner: -1, filled: false });
+                }
+                boxes.push(row);
+            }
+
+            // Init horizontal lines
+            hLines = [];
+            for (let r = 0; r < size; r++) {
+                const row = [];
+                for (let c = 0; c < size - 1; c++) {
+                    row.push({ drawn: false, owner: -1 });
+                }
+                hLines.push(row);
+            }
+
+            // Init vertical lines
+            vLines = [];
+            for (let r = 0; r < size - 1; r++) {
+                const row = [];
+                for (let c = 0; c < size; c++) {
+                    row.push({ drawn: false, owner: -1 });
+                }
+                vLines.push(row);
+            }
+
+            render();
+            updateUI();
+            updateMessage(`🎯 Player ${currentPlayer + 1}'s turn (${PLAYER_COLORS[currentPlayer].name})`, false);
+        }
+
+        function render() {
+            const size = GRID_SIZE;
+            boardEl.innerHTML = '';
+
+            for (let r = 0; r < size; r++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'row';
+
+                for (let c = 0; c < size; c++) {
+                    // Dot
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    rowDiv.appendChild(dot);
+
+                    // Horizontal line
+                    if (c < size - 1) {
+                        const hLineDiv = document.createElement('div');
+                        hLineDiv.className = 'h-line';
+                        hLineDiv.dataset.row = r;
+                        hLineDiv.dataset.col = c;
+                        hLineDiv.dataset.type = 'h';
+
+                        const line = document.createElement('div');
+                        line.className = 'line';
+                        if (hLines[r][c].drawn) {
+                            line.classList.add('drawn');
+                            const owner = hLines[r][c].owner;
+                            if (owner >= 0) {
+                                line.style.background = PLAYER_COLORS[owner].bg;
+                            }
+                        }
+                        hLineDiv.appendChild(line);
+
+                        if (!hLines[r][c].drawn && !isGameOver) {
+                            hLineDiv.addEventListener('click', () => handleLineClick(r, c, 'h'));
+                        }
+
+                        rowDiv.appendChild(hLineDiv);
+                    }
+                }
+
+                boardEl.appendChild(rowDiv);
+
+                // Vertical lines
+                if (r < size - 1) {
+                    const vRowDiv = document.createElement('div');
+                    vRowDiv.className = 'row';
+
+                    for (let c = 0; c < size; c++) {
+                        const vLineDiv = document.createElement('div');
+                        vLineDiv.className = 'v-line';
+                        vLineDiv.dataset.row = r;
+                        vLineDiv.dataset.col = c;
+                        vLineDiv.dataset.type = 'v';
+
+                        const line = document.createElement('div');
+                        line.className = 'line';
+                        if (vLines[r][c].drawn) {
+                            line.classList.add('drawn');
+                            const owner = vLines[r][c].owner;
+                            if (owner >= 0) {
+                                line.style.background = PLAYER_COLORS[owner].bg;
+                            }
+                        }
+                        vLineDiv.appendChild(line);
+
+                        if (!vLines[r][c].drawn && !isGameOver) {
+                            vLineDiv.addEventListener('click', () => handleLineClick(r, c, 'v'));
+                        }
+
+                        vRowDiv.appendChild(vLineDiv);
+
+                        // Box
+                        if (c < size - 1) {
+                            const boxDiv = document.createElement('div');
+                            boxDiv.className = 'box';
+                            if (boxes[r][c].filled) {
+                                boxDiv.classList.add('filled');
+                                const owner = boxes[r][c].owner;
+                                if (owner >= 0) {
+                                    boxDiv.textContent = owner + 1;
+                                    boxDiv.style.background = PLAYER_COLORS[owner].bg;
+                                    boxDiv.style.color = '#1a2332';
+                                    boxDiv.style.boxShadow = `0 0 20px ${PLAYER_COLORS[owner].bg}44`;
+                                }
+                            }
+                            vRowDiv.appendChild(boxDiv);
+                        }
+                    }
+
+                    boardEl.appendChild(vRowDiv);
+                }
+            }
+        }
+
+        function handleLineClick(row, col, type) {
+            if (isGameOver || isProcessing || aiRunning) return;
+
+            let line;
+            if (type === 'h') {
+                line = hLines[row][col];
+                if (line.drawn) return;
+            } else {
+                line = vLines[row][col];
+                if (line.drawn) return;
+            }
+
+            isProcessing = true;
+            drawLine(row, col, type);
+        }
+
+        function drawLine(row, col, type) {
+            let line;
+            if (type === 'h') {
+                line = hLines[row][col];
+            } else {
+                line = vLines[row][col];
+            }
+
+            line.drawn = true;
+            line.owner = currentPlayer;
+
+            let boxesCompleted = 0;
+
+            if (type === 'h') {
+                if (row > 0) {
+                    if (checkBox(row - 1, col)) boxesCompleted++;
+                }
+                if (row < GRID_SIZE - 1) {
+                    if (checkBox(row, col)) boxesCompleted++;
+                }
+            } else {
+                if (col > 0) {
+                    if (checkBox(row, col - 1)) boxesCompleted++;
+                }
+                if (col < GRID_SIZE - 1) {
+                    if (checkBox(row, col)) boxesCompleted++;
+                }
+            }
+
+            if (boxesCompleted > 0) {
+                scores[currentPlayer] += boxesCompleted;
+                updateUI();
+                updateMessage(`🎉 Player ${currentPlayer + 1} +${boxesCompleted} box(es)! Extra turn!`, false);
+                render();
+                updateUI();
+
+                if (checkGameOver()) {
+                    isProcessing = false;
+                    return;
+                }
+
+                if (hasGuaranteedMove()) {
+                    aiRunning = true;
+                    updateMessage(`🤖 Auto-play for ${PLAYER_COLORS[currentPlayer].name}...`, false);
+                    setTimeout(() => {
+                        executeAIMove();
+                    }, 350);
+                } else {
+                    isProcessing = false;
+                }
+            } else {
+                currentPlayer = (currentPlayer + 1) % numPlayers;
+                updateMessage(`🎯 Player ${currentPlayer + 1}'s turn (${PLAYER_COLORS[currentPlayer].name})`, false);
+                render();
+                updateUI();
+
+                if (hasGuaranteedMove()) {
+                    aiRunning = true;
+                    updateMessage(`🤖 Auto-play for ${PLAYER_COLORS[currentPlayer].name}...`, false);
+                    setTimeout(() => {
+                        executeAIMove();
+                    }, 350);
+                } else {
+                    isProcessing = false;
+                }
+            }
+        }
+
+        function checkBox(row, col) {
+            if (boxes[row][col].filled) return false;
+
+            const top = hLines[row][col];
+            const bottom = hLines[row + 1][col];
+            const left = vLines[row][col];
+            const right = vLines[row][col + 1];
+
+            if (top.drawn && bottom.drawn && left.drawn && right.drawn) {
+                boxes[row][col].filled = true;
+                boxes[row][col].owner = currentPlayer;
+                return true;
+            }
+            return false;
+        }
+
+        function hasGuaranteedMove() {
+            const size = GRID_SIZE;
+            let availableLines = 0;
+            let guaranteedLines = 0;
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size - 1; c++) {
+                    if (!hLines[r][c].drawn) {
+                        availableLines++;
+                        let wouldComplete = false;
+                        if (r > 0 && wouldBoxComplete(r - 1, c, 'h', r, c)) wouldComplete = true;
+                        if (r < size - 1 && wouldBoxComplete(r, c, 'h', r, c)) wouldComplete = true;
+                        if (wouldComplete) guaranteedLines++;
+                    }
+                }
+            }
+
+            for (let r = 0; r < size - 1; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (!vLines[r][c].drawn) {
+                        availableLines++;
+                        let wouldComplete = false;
+                        if (c > 0 && wouldBoxComplete(r, c - 1, 'v', r, c)) wouldComplete = true;
+                        if (c < size - 1 && wouldBoxComplete(r, c, 'v', r, c)) wouldComplete = true;
+                        if (wouldComplete) guaranteedLines++;
+                    }
+                }
+            }
+
+            return availableLines > 0 && guaranteedLines === availableLines;
+        }
+
+        function wouldBoxComplete(row, col, type, lineRow, lineCol) {
+            if (boxes[row][col].filled) return false;
+
+            const top = hLines[row][col];
+            const bottom = hLines[row + 1][col];
+            const left = vLines[row][col];
+            const right = vLines[row][col + 1];
+
+            let drawn = 0;
+            if (top.drawn) drawn++;
+            if (bottom.drawn) drawn++;
+            if (left.drawn) drawn++;
+            if (right.drawn) drawn++;
+
+            if (drawn === 3) {
+                if (type === 'h') {
+                    if (lineRow === row && lineCol === col) return !top.drawn;
+                    if (lineRow === row + 1 && lineCol === col) return !bottom.drawn;
+                } else {
+                    if (lineRow === row && lineCol === col) return !left.drawn;
+                    if (lineRow === row && lineCol === col + 1) return !right.drawn;
+                }
+            }
+            return false;
+        }
+
+        function executeAIMove() {
+            const size = GRID_SIZE;
+            let moves = [];
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size - 1; c++) {
+                    if (!hLines[r][c].drawn) {
+                        let completes = false;
+                        if (r > 0 && wouldBoxComplete(r - 1, c, 'h', r, c)) completes = true;
+                        if (r < size - 1 && wouldBoxComplete(r, c, 'h', r, c)) completes = true;
+                        if (completes) moves.push({ row: r, col: c, type: 'h' });
+                    }
+                }
+            }
+
+            for (let r = 0; r < size - 1; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (!vLines[r][c].drawn) {
+                        let completes = false;
+                        if (c > 0 && wouldBoxComplete(r, c - 1, 'v', r, c)) completes = true;
+                        if (c < size - 1 && wouldBoxComplete(r, c, 'v', r, c)) completes = true;
+                        if (completes) moves.push({ row: r, col: c, type: 'v' });
+                    }
+                }
+            }
+
+            if (moves.length > 0) {
+                const move = moves[Math.floor(Math.random() * moves.length)];
+                drawLine(move.row, move.col, move.type);
+                render();
+                updateUI();
+
+                if (!checkGameOver()) {
+                    if (hasGuaranteedMove()) {
+                        setTimeout(() => {
+                            executeAIMove();
+                        }, 300);
+                    } else {
+                        aiRunning = false;
+                        isProcessing = false;
+                        updateMessage(`🎯 Player ${currentPlayer + 1}'s turn (${PLAYER_COLORS[currentPlayer].name})`, false);
+                    }
+                }
+            } else {
+                aiRunning = false;
+                isProcessing = false;
+                if (!isGameOver) {
+                    updateMessage(`🎯 Player ${currentPlayer + 1}'s turn (${PLAYER_COLORS[currentPlayer].name})`, false);
+                }
+            }
+        }
+
+        function checkGameOver() {
+            const totalBoxes = (GRID_SIZE - 1) * (GRID_SIZE - 1);
+            let filled = 0;
+            for (let r = 0; r < GRID_SIZE - 1; r++) {
+                for (let c = 0; c < GRID_SIZE - 1; c++) {
+                    if (boxes[r][c].filled) filled++;
+                }
+            }
+
+            if (filled === totalBoxes) {
+                isGameOver = true;
+                aiRunning = false;
+                isProcessing = false;
+
+                let maxScore = Math.max(...scores);
+                let winners = [];
+                for (let i = 0; i < scores.length; i++) {
+                    if (scores[i] === maxScore) winners.push(i);
+                }
+
+                let msg = '🏆 ';
+                if (winners.length === 1) {
+                    const winner = winners[0];
+                    msg += `Player ${winner + 1} WINS! 🎉`;
+                    bodyEl.style.background = `radial-gradient(circle at 30% 20%, ${PLAYER_COLORS[winner].bg}dd, ${PLAYER_COLORS[winner].bg}66, #0a0a1a)`;
+                    bodyEl.className = 'winner-bg';
+                } else {
+                    msg += `TIE between Players ${winners.map(w => w + 1).join(' & ')}! 🤝`;
+                    bodyEl.style.background = 'radial-gradient(circle at 30% 20%, #f1c40fdd, #f1c40f66, #0a0a1a)';
+                    bodyEl.className = 'winner-bg';
+                }
+                updateMessage(msg, true);
+                render();
+                return true;
+            }
+            return false;
+        }
+
+        function updateUI() {
+            playerInfoEl.innerHTML = '';
+            for (let i = 0; i < numPlayers; i++) {
+                const tag = document.createElement('span');
+                tag.className = `player-tag p${i + 1}-tag`;
+                if (i === currentPlayer && !isGameOver && !aiRunning) tag.classList.add('active');
+                tag.textContent = `${PLAYER_COLORS[i].name} (${scores[i]})`;
+                tag.style.borderColor = PLAYER_COLORS[i].bg;
+                tag.style.color = PLAYER_COLORS[i].bg;
+                if (i === currentPlayer && !isGameOver && !aiRunning) {
+                    tag.style.background = PLAYER_COLORS[i].light;
+                }
+                playerInfoEl.appendChild(tag);
+            }
+
+            scorePanelEl.innerHTML = '';
+            for (let i = 0; i < numPlayers; i++) {
+                const box = document.createElement('div');
+                box.className = 'score-box';
+                box.style.color = PLAYER_COLORS[i].bg;
+                box.innerHTML = `${PLAYER_COLORS[i].name} <span>${scores[i]}</span>`;
+                scorePanelEl.appendChild(box);
+            }
+
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'reset-btn';
+            resetBtn.textContent = '🔄 New Game';
+            resetBtn.addEventListener('click', () => {
+                if (aiRunning) return;
+                gameScreen.classList.remove('active');
+                setupScreen.classList.remove('hidden');
+                bodyEl.style.background = 'radial-gradient(circle at 30% 20%, #1a1a2e, #16213e, #0f3460)';
+                bodyEl.className = '';
+            });
+            scorePanelEl.appendChild(resetBtn);
+        }
+
+        function updateMessage(text, isWinner) {
+            messageEl.textContent = text;
+            messageEl.className = 'message' + (isWinner ? ' winner-msg' : '');
+        }
+    })();
+</script>
+</body>
+</html>
