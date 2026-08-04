@@ -1,0 +1,585 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⏰ Alarm Clock</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #0a0f18;
+            --bg-input: #15202b;
+            --text-primary: #b0d0ec;
+            --text-secondary: #8aaac0;
+            --text-highlight: #ffd966;
+            --text-danger: #ff6b6b;
+            --text-success: #6bff6b;
+            --border-color: rgba(255,255,255,0.06);
+            --shadow-color: rgba(0,0,0,0.8);
+            --accent: #4a7aaa;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #e8ecf1;
+            --bg-secondary: #d5dce4;
+            --bg-card: #f0f4f8;
+            --bg-input: #e0e6ec;
+            --text-primary: #1a2a3e;
+            --text-secondary: #3a4a5e;
+            --text-highlight: #e67e22;
+            --text-danger: #cc0000;
+            --text-success: #00aa00;
+            --border-color: rgba(0,0,0,0.08);
+            --shadow-color: rgba(0,0,0,0.15);
+            --accent: #3a7aaa;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-primary);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            padding: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .app-wrap {
+            background: var(--bg-secondary);
+            border-radius: 32px;
+            padding: 24px;
+            box-shadow: 0 30px 60px var(--shadow-color);
+            max-width: 420px;
+            width: 100%;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            color: var(--text-primary);
+            font-size: 22px;
+            font-weight: 700;
+            transition: color 0.3s;
+        }
+
+        .theme-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 14px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            touch-action: manipulation;
+        }
+        .theme-btn:active { transform: scale(0.92); }
+
+        .clock-display {
+            text-align: center;
+            padding: 20px 0;
+            background: var(--bg-card);
+            border-radius: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .clock-display .time {
+            color: var(--text-primary);
+            font-size: 48px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            transition: color 0.3s;
+            letter-spacing: 2px;
+            direction: ltr;
+        }
+
+        .clock-display .date {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-top: 4px;
+            transition: color 0.3s;
+            direction: ltr;
+        }
+
+        .alarm-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .alarm-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            transition: color 0.3s;
+        }
+
+        .alarm-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .alarm-input-group input[type="time"] {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: 2px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            outline: none;
+            transition: all 0.3s;
+            min-width: 120px;
+            touch-action: manipulation;
+            direction: ltr;
+        }
+
+        .alarm-input-group input[type="time"]:focus {
+            border-color: var(--accent);
+        }
+
+        .alarm-input-group input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.6);
+            cursor: pointer;
+        }
+        [data-theme="light"] .alarm-input-group input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.2);
+        }
+
+        .btn-set {
+            padding: 12px 24px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(145deg, #2a6a4a, #1a4a32);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            touch-action: manipulation;
+            white-space: nowrap;
+        }
+        .btn-set:active { transform: scale(0.92); }
+        .btn-set.active {
+            background: linear-gradient(145deg, #6a3a2a, #4a221a);
+        }
+        .btn-set:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-stop {
+            padding: 12px 24px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(145deg, #6a2a3a, #4a1a28);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            touch-action: manipulation;
+        }
+        .btn-stop:active { transform: scale(0.92); }
+        .btn-stop:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            margin-top: 12px;
+            transition: all 0.3s;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .status-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.3s;
+            direction: ltr;
+        }
+        .status-text .highlight { color: var(--text-highlight); }
+        .status-text .danger { color: var(--text-danger); }
+        .status-text .success { color: var(--text-success); }
+
+        .status-time {
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            transition: color 0.3s;
+            direction: ltr;
+        }
+
+        .alarm-ringing {
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { background: var(--bg-card); }
+            100% { background: var(--text-danger); opacity: 0.15; }
+        }
+
+        @media (max-width: 400px) {
+            .clock-display .time { font-size: 36px; }
+            .alarm-input-group input[type="time"] { font-size: 16px; padding: 10px 12px; }
+            .btn-set, .btn-stop { padding: 10px 16px; font-size: 14px; }
+            .title { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-wrap">
+    <div class="header">
+        <div class="title">⏰ Alarm Clock</div>
+        <button class="theme-btn" id="themeBtn">🌙</button>
+    </div>
+
+    <div class="clock-display">
+        <div class="time" id="clockDisplay">00:00:00</div>
+        <div class="date" id="dateDisplay">Loading...</div>
+    </div>
+
+    <div class="alarm-section">
+        <div class="alarm-label">🔔 Set Alarm</div>
+        <div class="alarm-input-group">
+            <input type="time" id="alarmTime" value="08:00">
+            <button class="btn-set" id="setBtn">Set Alarm</button>
+            <button class="btn-stop" id="stopBtn" disabled>Stop</button>
+        </div>
+    </div>
+
+    <div class="status" id="statusBox">
+        <span class="status-text" id="statusText">⏳ No alarm set</span>
+        <span class="status-time" id="statusTime">--:--</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---- Theme ----
+        let currentTheme = 'dark';
+        const themeBtn = document.getElementById('themeBtn');
+        function toggleTheme() {
+            if (currentTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                currentTheme = 'light';
+                themeBtn.textContent = '☀️';
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                currentTheme = 'dark';
+                themeBtn.textContent = '🌙';
+            }
+        }
+        themeBtn.addEventListener('click', toggleTheme);
+        themeBtn.addEventListener('touchstart', (e) => { e.preventDefault(); toggleTheme(); });
+
+        // ---- DOM ----
+        const clockDisplay = document.getElementById('clockDisplay');
+        const dateDisplay = document.getElementById('dateDisplay');
+        const alarmInput = document.getElementById('alarmTime');
+        const setBtn = document.getElementById('setBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusText = document.getElementById('statusText');
+        const statusTime = document.getElementById('statusTime');
+        const statusBox = document.getElementById('statusBox');
+
+        // ---- State ----
+        let alarmTime = null;
+        let isRinging = false;
+        let alarmTimeout = null;
+        let audioContext = null;
+        let isPlaying = false;
+        let melodyInterval = null;
+        let beepInterval = null;
+
+        // ---- Update Clock ----
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            clockDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+
+            // English date
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            dateDisplay.textContent = now.toLocaleDateString('en-US', options);
+
+            // Check alarm
+            if (alarmTime && !isRinging) {
+                const currentTime = `${hours}:${minutes}`;
+                if (currentTime === alarmTime) {
+                    triggerAlarm();
+                }
+            }
+        }
+
+        // ---- Play Melody (Web Audio API) ----
+        function playMelody() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Simple melody notes (frequencies)
+                const notes = [
+                    523, 587, 659, 784, 880, 988, 1047, 880, 784, 659, 587, 523,
+                    523, 587, 659, 784, 880, 988, 1047, 880, 784, 659, 587, 523,
+                    659, 659, 659, 659, 659, 659, 659, 659,
+                    784, 784, 784, 784, 784, 784, 784, 784,
+                    880, 880, 880, 880, 880, 880, 880, 880,
+                    988, 988, 988, 988, 988, 988, 988, 988,
+                    1047, 1047, 1047, 1047, 1047, 1047, 1047, 1047
+                ];
+
+                let index = 0;
+                isPlaying = true;
+
+                function playNote() {
+                    if (!isPlaying || index >= notes.length) {
+                        // Loop the melody
+                        if (isPlaying) {
+                            index = 0;
+                            setTimeout(playNote, 300);
+                        }
+                        return;
+                    }
+
+                    const freq = notes[index];
+                    const duration = 0.15;
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+
+                    gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+
+                    osc.start(audioContext.currentTime);
+                    osc.stop(audioContext.currentTime + duration);
+
+                    index++;
+                    const delay = (index % 8 === 0) ? 0.25 : 0.16;
+                    melodyInterval = setTimeout(playNote, delay * 1000);
+                }
+
+                playNote();
+
+                // Vibrate
+                if (navigator.vibrate) {
+                    navigator.vibrate([300, 100, 300, 100, 300]);
+                }
+
+            } catch (e) {
+                console.log('Audio error:', e);
+                beepFallback();
+            }
+        }
+
+        // ---- Fallback Beep ----
+        function beepFallback() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                function beep() {
+                    if (!isPlaying) return;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = 800;
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.3);
+
+                    setTimeout(() => {
+                        if (!isPlaying) return;
+                        const osc2 = ctx.createOscillator();
+                        const gain2 = ctx.createGain();
+                        osc2.type = 'square';
+                        osc2.frequency.value = 1000;
+                        gain2.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                        osc2.connect(gain2);
+                        gain2.connect(ctx.destination);
+                        osc2.start(ctx.currentTime);
+                        osc2.stop(ctx.currentTime + 0.3);
+                    }, 400);
+
+                    if (navigator.vibrate) {
+                        navigator.vibrate([300, 100, 300]);
+                    }
+
+                    beepInterval = setTimeout(beep, 1000);
+                }
+
+                beep();
+
+            } catch(e) {
+                // Last resort: console only
+                console.log('No audio support');
+            }
+        }
+
+        // ---- Stop Alarm ----
+        function stopAlarm() {
+            isRinging = false;
+            isPlaying = false;
+            
+            // Clear all timeouts/intervals
+            if (alarmTimeout) {
+                clearTimeout(alarmTimeout);
+                alarmTimeout = null;
+            }
+            if (melodyInterval) {
+                clearTimeout(melodyInterval);
+                melodyInterval = null;
+            }
+            if (beepInterval) {
+                clearTimeout(beepInterval);
+                beepInterval = null;
+            }
+            
+            // Close audio context
+            if (audioContext) {
+                try { audioContext.close(); } catch(e) {}
+                audioContext = null;
+            }
+
+            // Reset UI
+            stopBtn.disabled = true;
+            setBtn.disabled = false;
+            statusBox.classList.remove('alarm-ringing');
+            statusText.innerHTML = '⏹️ Alarm stopped';
+            statusTime.textContent = '--:--';
+            
+            // Reset alarm time so it doesn't trigger again
+            alarmTime = null;
+            setBtn.textContent = 'Set Alarm';
+            setBtn.style.background = '';
+        }
+
+        // ---- Trigger Alarm ----
+        function triggerAlarm() {
+            if (isRinging) return;
+            isRinging = true;
+            stopBtn.disabled = false;
+            setBtn.disabled = true;
+            statusBox.classList.add('alarm-ringing');
+            statusText.innerHTML = '🔔 <span class="danger">ALARM RINGING!</span>';
+            statusTime.textContent = alarmTime;
+
+            // Play sound
+            playMelody();
+
+            // Auto-stop after 60 seconds
+            alarmTimeout = setTimeout(() => {
+                stopAlarm();
+            }, 60000);
+        }
+
+        // ---- Set Alarm ----
+        function setAlarm() {
+            const val = alarmInput.value;
+            if (!val) {
+                statusText.innerHTML = '⚠️ Please select a time';
+                return;
+            }
+
+            // Clear any existing alarm
+            if (isRinging) {
+                stopAlarm();
+            }
+
+            alarmTime = val;
+            statusText.innerHTML = `⏰ Alarm set for <span class="highlight">${val}</span>`;
+            statusTime.textContent = val;
+            setBtn.textContent = '✅ Set';
+            setBtn.style.background = 'linear-gradient(145deg, #2a6a4a, #1a4a32)';
+
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                if (!isRinging) {
+                    setBtn.textContent = 'Set Alarm';
+                    setBtn.style.background = '';
+                }
+            }, 2000);
+        }
+
+        // ---- Stop button ----
+        stopBtn.addEventListener('click', stopAlarm);
+        stopBtn.addEventListener('touchstart', (e) => { e.preventDefault(); stopAlarm(); });
+
+        // ---- Set button ----
+        setBtn.addEventListener('click', setAlarm);
+        setBtn.addEventListener('touchstart', (e) => { e.preventDefault(); setAlarm(); });
+
+        // ---- Init ----
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Set default time to 8:00
+        alarmInput.value = '08:00';
+
+        statusText.innerHTML = '⏳ No alarm set';
+        statusTime.textContent = '--:--';
+        stopBtn.disabled = true;
+
+        // ---- Permission for vibration ----
+        if (navigator.vibrate) {
+            console.log('Vibration supported');
+        }
+
+    })();
+</script>
+</body>
+</html>
