@@ -1,0 +1,319 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>🌈 Rainbow Tap</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 30px;
+            padding: 30px;
+            text-align: center;
+            width: 550px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        h1 { 
+            color: #fff; 
+            font-size: 28px; 
+            margin-bottom: 5px; 
+            text-shadow: 0 0 30px rgba(255,255,255,0.2); 
+        }
+        .timer { 
+            color: #ffd700; 
+            font-size: 22px; 
+            margin: 5px 0; 
+        }
+        .timer span { 
+            background: rgba(255,215,0,0.2); 
+            padding: 5px 20px; 
+            border-radius: 12px; 
+        }
+        .target-color {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 20px;
+            margin: 10px 0;
+            border: 3px dashed rgba(255,255,255,0.3);
+        }
+        .target-label { 
+            color: #aaa; 
+            font-size: 16px; 
+        }
+        .target-box {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 10px auto;
+            border: 4px solid #fff;
+            box-shadow: 0 0 40px rgba(255,255,255,0.3);
+            transition: all 0.3s;
+        }
+        .circles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            min-height: 250px;
+        }
+        .circle {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            border: 3px solid rgba(255,255,255,0.2);
+        }
+        .circle:hover { transform: scale(1.05); }
+        .circle:active { transform: scale(0.85); }
+        .circle.correct { 
+            animation: pop 0.3s ease;
+            border-color: #00ff88;
+        }
+        .circle.wrong { 
+            animation: shake 0.3s ease;
+            border-color: #ff4444;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .score {
+            color: #fff;
+            font-size: 20px;
+            margin: 10px 0;
+        }
+        .score span { 
+            background: rgba(255,255,255,0.15);
+            padding: 5px 20px;
+            border-radius: 12px;
+        }
+        .message {
+            color: #4fc3f7;
+            font-size: 16px;
+            min-height: 25px;
+            margin: 5px 0;
+        }
+        .btn {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            border: none;
+            padding: 12px 40px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.3s;
+            box-shadow: 0 5px 20px rgba(245,87,108,0.4);
+        }
+        .btn:hover { transform: scale(1.05); }
+        .btn:active { transform: scale(0.95); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .combo-display { 
+            color: #ffd700; 
+            font-size: 18px; 
+            margin: 5px 0; 
+            min-height: 25px; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌈 Rainbow Tap</h1>
+    <div class="timer">⏱️ Time: <span id="timerDisplay">30</span>s</div>
+    
+    <div class="target-color">
+        <div class="target-label">🎯 Tap the circle with this color:</div>
+        <div class="target-box" id="targetBox"></div>
+    </div>
+
+    <div class="circles-grid" id="circlesGrid"></div>
+
+    <div class="score">⭐ Score: <span id="scoreDisplay">0</span></div>
+    <div class="combo-display" id="comboDisplay"></div>
+    <div class="message" id="message">👆 Press "Start Game" to begin!</div>
+    
+    <button class="btn" id="startBtn" onclick="startGame()">🚀 Start Game</button>
+</div>
+
+<script>
+    // ===== Colors =====
+    const colors = [
+        '#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', 
+        '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD',
+        '#FF6FB7', '#00D2D3', '#01A3A4', '#F368E0',
+        '#FFC312', '#C4E538', '#FDA7DF', '#ED4C67'
+    ];
+
+    // ===== Variables =====
+    let score = 0;
+    let timeLeft = 30;
+    let combo = 0;
+    let targetColor = '';
+    let gameRunning = false;
+    let timerInterval = null;
+    let currentCircles = [];
+
+    // ===== Elements =====
+    const grid = document.getElementById('circlesGrid');
+    const targetBox = document.getElementById('targetBox');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const message = document.getElementById('message');
+    const comboDisplay = document.getElementById('comboDisplay');
+    const startBtn = document.getElementById('startBtn');
+
+    // ===== Generate Random Color =====
+    function randomColor() {
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    // ===== Generate Circles =====
+    function generateCircles() {
+        const count = Math.min(4 + Math.floor(score / 20), 9);
+        const circles = [];
+        const target = randomColor();
+        
+        for (let i = 0; i < count; i++) {
+            const color = (i === 0) ? target : randomColor();
+            circles.push(color);
+        }
+        // shuffle
+        for (let i = circles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [circles[i], circles[j]] = [circles[j], circles[i]];
+        }
+        
+        currentCircles = circles;
+        targetColor = target;
+        targetBox.style.background = target;
+        
+        renderCircles(circles);
+    }
+
+    // ===== Render Circles =====
+    function renderCircles(circles) {
+        grid.innerHTML = '';
+        const count = circles.length;
+        if (count <= 4) grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        else if (count <= 6) grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        else grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+
+        circles.forEach((color, index) => {
+            const div = document.createElement('div');
+            div.className = 'circle';
+            div.style.background = color;
+            div.dataset.index = index;
+            div.dataset.color = color;
+            div.addEventListener('click', () => handleCircleClick(div, color));
+            grid.appendChild(div);
+        });
+    }
+
+    // ===== Handle Click (اصلاح شده) =====
+    function handleCircleClick(element, color) {
+        if (!gameRunning) {
+            message.innerHTML = '⏳ Start the game first!';
+            return;
+        }
+
+        if (color === targetColor) {
+            // ✅ Correct! → New color appears
+            score += 10 + combo * 3;
+            combo++;
+            element.classList.add('correct');
+            setTimeout(() => element.classList.remove('correct'), 300);
+            message.innerHTML = '✅ Correct! +' + (10 + (combo-1)*3) + ' pts';
+            if (combo >= 5) {
+                comboDisplay.textContent = '🔥 Combo ' + combo + 'x!';
+            }
+            // ★★★ ONLY HERE the color changes ★★★
+            generateCircles();
+        } else {
+            // ❌ Wrong → Same color stays, just lose points
+            combo = 0;
+            comboDisplay.textContent = '';
+            element.classList.add('wrong');
+            setTimeout(() => element.classList.remove('wrong'), 300);
+            score = Math.max(0, score - 5);
+            message.innerHTML = '❌ Wrong! -5 pts (keep trying!)';
+        }
+        updateUI();
+    }
+
+    // ===== Update UI =====
+    function updateUI() {
+        scoreDisplay.textContent = score;
+        timerDisplay.textContent = timeLeft;
+    }
+
+    // ===== Timer =====
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerDisplay.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+
+    // ===== End Game =====
+    function endGame() {
+        gameRunning = false;
+        clearInterval(timerInterval);
+        startBtn.disabled = false;
+        startBtn.textContent = '🔄 Play Again';
+        message.innerHTML = '🏁 Game Over! Final Score: ' + score;
+        comboDisplay.textContent = '';
+        // Show all circles as gray
+        document.querySelectorAll('.circle').forEach(c => {
+            c.style.background = '#444';
+            c.style.cursor = 'default';
+        });
+        targetBox.style.background = '#555';
+    }
+
+    // ===== Start Game (اصلاح شده - بدون تایمر خودکار) =====
+    function startGame() {
+        score = 0;
+        timeLeft = 30;
+        combo = 0;
+        gameRunning = true;
+        startBtn.disabled = true;
+        startBtn.textContent = '⏳ Playing...';
+        comboDisplay.textContent = '';
+        message.innerHTML = '🎯 Find the matching color!';
+        updateUI();
+        generateCircles();
+        startTimer();
+        // ★★★ NO auto-change interval ★★★
+    }
+
+    // ===== Init =====
+    generateCircles();
+    message.innerHTML = '👆 Press "Start Game" to begin!';
+    startBtn.textContent = '🚀 Start Game';
+</script>
+
+</body>
+</html>
