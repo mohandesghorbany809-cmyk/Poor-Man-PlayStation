@@ -1,0 +1,256 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>🧊 Melting Game</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(180deg, #0b3d91, #1a6bc4);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .container {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 40px;
+            text-align: center;
+            width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        h1 { color: #fff; font-size: 32px; margin-bottom: 10px; text-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .ice-status {
+            font-size: 60px;
+            margin: 10px 0;
+            transition: all 0.3s;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .progress-fill {
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, #4fc3f7, #00e5ff);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+        }
+        .word-box {
+            background: rgba(255,255,255,0.95);
+            padding: 30px 20px;
+            border-radius: 20px;
+            margin: 20px 0;
+            font-size: 48px;
+            font-weight: bold;
+            min-height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: 0.2s;
+            user-select: none;
+            color: #1a1a2e;
+        }
+        .word-box:hover { transform: scale(1.02); }
+        .word-box:active { transform: scale(0.95); }
+        .score {
+            color: #fff;
+            font-size: 22px;
+            margin: 10px 0;
+        }
+        .score span { 
+            background: rgba(255,255,255,0.2);
+            padding: 5px 20px;
+            border-radius: 12px;
+        }
+        .message {
+            color: #ffd54f;
+            font-size: 18px;
+            min-height: 30px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .btn {
+            background: #ff6b6b;
+            border: none;
+            padding: 12px 40px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.3s;
+            box-shadow: 0 5px 20px rgba(255,107,107,0.4);
+        }
+        .btn:hover { transform: scale(1.05); background: #ff5252; }
+        .btn:active { transform: scale(0.95); }
+        .hot { color: #ff6b35; }
+        .cold { color: #4fc3f7; }
+        .combo { color: #ffd700; font-size: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🧊 Melting Game</h1>
+    <div class="ice-status" id="iceEmoji">🧊</div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    
+    <div class="word-box" id="wordBox">🔥 Click Me</div>
+    
+    <div class="score">❄️ Score: <span id="scoreDisplay">0</span></div>
+    <div class="score">🔥 Words: <span id="wordCount">0</span></div>
+    <div class="message" id="message">👇 Click the word!</div>
+    <div class="combo" id="comboDisplay"></div>
+    
+    <button class="btn" onclick="resetGame()">🔄 Restart</button>
+</div>
+
+<script>
+    // ===== Word Lists =====
+    const hotWords = ['Fire', 'Sun', 'Flame', 'Heat', 'Blaze', 'Hot', 'Burn', 'Scorch'];
+    const coldWords = ['Snow', 'Ice', 'Wind', 'Cold', 'Winter', 'Frost', 'Freeze', 'Polar'];
+
+    // ===== Variables =====
+    let score = 0;
+    let meltLevel = 50; // 0 to 100
+    let combo = 0;
+    let currentWord = '';
+    let isHot = true;
+    let gameOver = false;
+    let speed = 1500; // milliseconds
+    let timer = null;
+
+    // ===== Elements =====
+    const wordBox = document.getElementById('wordBox');
+    const progressFill = document.getElementById('progressFill');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const wordCountDisplay = document.getElementById('wordCount');
+    const message = document.getElementById('message');
+    const iceEmoji = document.getElementById('iceEmoji');
+    const comboDisplay = document.getElementById('comboDisplay');
+
+    // ===== Generate New Word =====
+    function newWord() {
+        if (gameOver) return;
+
+        // 60% chance hot, 40% cold
+        isHot = Math.random() < 0.6;
+        const list = isHot ? hotWords : coldWords;
+        currentWord = list[Math.floor(Math.random() * list.length)];
+        wordBox.textContent = currentWord;
+        wordBox.className = 'word-box ' + (isHot ? 'hot' : 'cold');
+        
+        if (isHot) {
+            message.innerHTML = '🔥 <strong>Hot</strong> word! Click to melt the ice!';
+        } else {
+            message.innerHTML = '❄️ <strong>Cold</strong> word! DON\'T click!';
+        }
+
+        // Speed up as ice melts
+        if (meltLevel > 70) speed = 800;
+        else if (meltLevel > 50) speed = 1000;
+        else if (meltLevel > 30) speed = 1200;
+        else speed = 1500;
+
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            if (!gameOver) {
+                newWord();
+            }
+        }, speed);
+    }
+
+    // ===== Click on Word =====
+    wordBox.addEventListener('click', function() {
+        if (gameOver) return;
+
+        if (isHot) {
+            // Hot word clicked ✅
+            meltLevel = Math.min(100, meltLevel + 5);
+            score += 10 + combo * 2;
+            combo++;
+            message.innerHTML = '✅ Great! +' + (10 + (combo-1)*2) + ' points';
+            if (combo >= 5) {
+                comboDisplay.textContent = '🔥 Combo ' + combo + 'x!';
+            }
+            if (meltLevel >= 100) {
+                meltLevel = 100;
+                message.innerHTML = '🎉 🎊 Ice completely melted! You win! 🎊 🎉';
+                gameOver = true;
+                wordBox.textContent = '🏆';
+                clearTimeout(timer);
+            }
+        } else {
+            // Cold word clicked ❌
+            meltLevel = Math.max(0, meltLevel - 15);
+            combo = 0;
+            comboDisplay.textContent = '';
+            message.innerHTML = '❌ No! That was cold! Ice froze!';
+            wordBox.style.transform = 'scale(0.8)';
+            setTimeout(() => wordBox.style.transform = 'scale(1)', 200);
+            if (meltLevel <= 0) {
+                meltLevel = 0;
+                message.innerHTML = '💀 Ice completely frozen! Game Over!';
+                gameOver = true;
+                wordBox.textContent = '💀';
+                clearTimeout(timer);
+            }
+        }
+        updateUI();
+        if (!gameOver) newWord();
+    });
+
+    // ===== Update UI =====
+    function updateUI() {
+        progressFill.style.width = meltLevel + '%';
+        scoreDisplay.textContent = score;
+        wordCountDisplay.textContent = Math.floor(score / 10) || 0;
+        
+        if (meltLevel >= 80) iceEmoji.textContent = '💧';
+        else if (meltLevel >= 60) iceEmoji.textContent = '🧊';
+        else if (meltLevel >= 40) iceEmoji.textContent = '🧊';
+        else if (meltLevel >= 20) iceEmoji.textContent = '🧊';
+        else iceEmoji.textContent = '❄️';
+
+        if (meltLevel > 70) progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #ffd700)';
+        else if (meltLevel > 40) progressFill.style.background = 'linear-gradient(90deg, #4fc3f7, #00e5ff)';
+        else progressFill.style.background = 'linear-gradient(90deg, #1a6bc4, #4fc3f7)';
+    }
+
+    // ===== Reset Game =====
+    function resetGame() {
+        score = 0;
+        meltLevel = 50;
+        combo = 0;
+        gameOver = false;
+        speed = 1500;
+        comboDisplay.textContent = '';
+        clearTimeout(timer);
+        updateUI();
+        message.innerHTML = '👇 New game! Click the word!';
+        wordBox.style.transform = 'scale(1)';
+        newWord();
+    }
+
+    // ===== Start =====
+    resetGame();
+</script>
+
+</body>
+</html>
