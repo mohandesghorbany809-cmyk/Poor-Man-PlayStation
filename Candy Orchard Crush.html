@@ -1,0 +1,489 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✨ Candy Crush Deluxe</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 30% 10%, #2d1f3d, #140e1a);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', 'Tahoma', cursive, sans-serif;
+      padding: 16px;
+      margin: 0;
+    }
+
+    .game-wrapper {
+      background: rgba(255, 215, 0, 0.25);
+      backdrop-filter: blur(6px);
+      padding: 28px 22px 32px;
+      border-radius: 80px 80px 56px 56px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8), 0 0 0 3px #feda5e inset, 0 0 0 6px #6b4f3c inset;
+      transition: 0.3s;
+    }
+
+    .game-container {
+      background: #3c2a4a;
+      padding: 20px 18px 18px;
+      border-radius: 64px 64px 40px 40px;
+      box-shadow: 0 12px 0 #1c1124, 0 20px 40px #000000aa;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #f7e05e;
+      text-shadow: 0 5px 0 #a77b2e, 0 10px 20px #00000099;
+      margin-top: -14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    h1 span {
+      background: #ffb347;
+      padding: 0 20px;
+      border-radius: 100px;
+      font-size: 1.8rem;
+      color: #2d1b2e;
+      text-shadow: none;
+      box-shadow: 0 5px 0 #8f5a1a;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 10px;
+      background: #4f3466;
+      padding: 18px;
+      border-radius: 52px;
+      box-shadow: 0 8px 0 #281b33, 0 16px 32px #000000cc;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .cell {
+      width: 70px;
+      height: 70px;
+      background: #2f1d3b;
+      border-radius: 30px 10px 30px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.6rem;
+      font-weight: bold;
+      text-shadow: 0 4px 4px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: 0.12s ease;
+      box-shadow: 0 7px 0 #1c1124, 0 8px 16px #00000077;
+      transform: scale(1);
+      position: relative;
+      will-change: transform;
+    }
+
+    .cell:hover {
+      filter: brightness(1.2);
+      transform: scale(1.04);
+    }
+
+    .cell:active {
+      transform: scale(0.90);
+    }
+
+    .candy-0 { background: linear-gradient(145deg, #ff6b7f, #e6334d); }
+    .candy-1 { background: linear-gradient(145deg, #6ee0d6, #2bb8ad); }
+    .candy-2 { background: linear-gradient(145deg, #ffe680, #f7c948); }
+    .candy-3 { background: linear-gradient(145deg, #d4a0f7, #b06be0); }
+    .candy-4 { background: linear-gradient(145deg, #ffb34a, #f58a1e); }
+    .candy-5 { background: linear-gradient(145deg, #7fb0ff, #4a7fe0); }
+
+    .candy-0, .candy-1, .candy-2, .candy-3, .candy-4, .candy-5 {
+      box-shadow: 0 0 0 2px #ffffff88, 0 7px 0 #2a1a2e, 0 6px 12px #00000077;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .cell.selected {
+      box-shadow: 0 0 0 6px #fae374, 0 0 0 10px #ffdd44aa, 0 7px 0 #2a1a2e !important;
+      transform: scale(1.08);
+      filter: brightness(1.3);
+      transition: 0.08s;
+      z-index: 5;
+    }
+
+    .cell.explode {
+      animation: explodeBoom 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+      pointer-events: none;
+    }
+
+    @keyframes explodeBoom {
+      0% { transform: scale(1); opacity: 1; }
+      30% { transform: scale(1.8) rotate(20deg); opacity: 1; filter: brightness(2); }
+      60% { transform: scale(2.6) rotate(-15deg); opacity: 0.8; filter: brightness(2.5); }
+      100% { transform: scale(0.2) rotate(40deg); opacity: 0; filter: brightness(3); }
+    }
+
+    .cell.explode::after {
+      content: "✨💥✨";
+      position: absolute;
+      font-size: 3rem;
+      animation: sparkle 0.5s ease-out forwards;
+      pointer-events: none;
+      color: #fff9c4;
+      text-shadow: 0 0 30px #ffdd44;
+    }
+
+    @keyframes sparkle {
+      0% { transform: translate(0, 0) scale(0.5); opacity: 1; }
+      100% { transform: translate(30px, -40px) scale(2); opacity: 0; }
+    }
+
+    .score-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: #271d30;
+      border-radius: 80px;
+      margin-top: 14px;
+      box-shadow: 0 5px 0 #130d18, inset 0 2px 12px #f7e05e44;
+      color: #fae374;
+    }
+
+    .score-box {
+      background: #1f1428;
+      padding: 8px 32px;
+      border-radius: 60px;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      box-shadow: inset 0 3px 10px #000000bb, 0 4px 0 #6b4f3c;
+      color: #f7d44a;
+      text-shadow: 0 2px 0 #936f1f;
+    }
+
+    .reset-btn {
+      background: #f7d44a;
+      border: none;
+      color: #2d1b2e;
+      font-size: 1.7rem;
+      font-weight: bold;
+      padding: 6px 32px;
+      border-radius: 80px;
+      cursor: pointer;
+      box-shadow: 0 8px 0 #8f6f2a, 0 6px 16px #000000aa;
+      transition: 0.06s linear;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: 2px;
+    }
+
+    .reset-btn:active {
+      transform: translateY(6px);
+      box-shadow: 0 2px 0 #8f6f2a;
+    }
+    .reset-btn:hover {
+      background: #ffe680;
+      filter: brightness(1.1);
+    }
+
+    .footer-note {
+      text-align: center;
+      color: #d4b0e8;
+      margin-top: 16px;
+      font-weight: 500;
+      text-shadow: 0 2px 6px #000000cc;
+      letter-spacing: 1px;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 720px) {
+      .board { gap: 6px; padding: 12px; }
+      .cell { width: 50px; height: 50px; font-size: 2.8rem; border-radius: 20px 6px 20px 6px; }
+      .game-wrapper { padding: 12px; }
+      h1 { font-size: 2rem; }
+      .score-box { font-size: 1.6rem; padding: 4px 20px; }
+      .reset-btn { font-size: 1.4rem; padding: 4px 20px; }
+    }
+
+    @media (max-width: 480px) {
+      .cell { width: 40px; height: 40px; font-size: 2.2rem; border-radius: 14px 4px 14px 4px; }
+      .board { gap: 5px; padding: 10px; }
+      .game-wrapper { padding: 6px; }
+    }
+  </style>
+</head>
+<body>
+<div class="game-wrapper">
+  <div class="game-container">
+    <h1>
+      🍬 Candy Crush
+      <span>🔥</span>
+    </h1>
+
+    <div id="board" class="board"></div>
+
+    <div class="score-panel">
+      <div class="score-box">🍭 <span id="scoreDisplay">0</span></div>
+      <button class="reset-btn" id="resetGameBtn">🌀 Restart</button>
+    </div>
+    <div class="footer-note">💥 Select a candy, then click an adjacent one to match!</div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const ROWS = 8, COLS = 8, CANDY_TYPES = 6;
+    let board = [];
+    let score = 0;
+    let selectedRow = -1, selectedCol = -1;
+    let isProcessing = false;
+
+    const boardElement = document.getElementById('board');
+    const scoreSpan = document.getElementById('scoreDisplay');
+
+    const randomCandy = () => Math.floor(Math.random() * CANDY_TYPES);
+
+    function createRandomBoard() {
+      return Array.from({ length: ROWS }, () => Array.from({ length: COLS }, randomCandy));
+    }
+
+    function removeInitialMatches(board) {
+      let any = true, attempts = 0;
+      while (any && attempts < 100) {
+        any = false;
+        const matches = findAllMatches(board);
+        if (matches.length) {
+          any = true;
+          for (let m of matches) board[m.row][m.col] = randomCandy();
+        }
+        attempts++;
+      }
+      return board;
+    }
+
+    function findAllMatches(board) {
+      const matches = new Set();
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS - 2; c++) {
+          const val = board[r][c];
+          if (val === -1) continue;
+          if (board[r][c+1] === val && board[r][c+2] === val) {
+            let end = c+2;
+            while (end+1 < COLS && board[r][end+1] === val) end++;
+            for (let i = c; i <= end; i++) matches.add(`${r},${i}`);
+          }
+        }
+      }
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS - 2; r++) {
+          const val = board[r][c];
+          if (val === -1) continue;
+          if (board[r+1][c] === val && board[r+2][c] === val) {
+            let end = r+2;
+            while (end+1 < ROWS && board[end+1][c] === val) end++;
+            for (let i = r; i <= end; i++) matches.add(`${i},${c}`);
+          }
+        }
+      }
+      return Array.from(matches).map(str => {
+        const [row, col] = str.split(',').map(Number);
+        return { row, col };
+      });
+    }
+
+    function applyGravity(board) {
+      for (let c = 0; c < COLS; c++) {
+        for (let r = ROWS - 1; r >= 0; r--) {
+          if (board[r][c] === -1) {
+            for (let k = r - 1; k >= 0; k--) {
+              if (board[k][c] !== -1) {
+                board[r][c] = board[k][c];
+                board[k][c] = -1;
+                break;
+              }
+            }
+            if (board[r][c] === -1) board[r][c] = randomCandy();
+          }
+        }
+      }
+      return board;
+    }
+
+    function processBoardWithAnimation(board, addScore = true) {
+      return new Promise((resolve) => {
+        let anyMatched = false;
+        let loopGuard = 0;
+
+        function step() {
+          if (loopGuard++ > 50) { resolve(anyMatched); return; }
+          const matches = findAllMatches(board);
+          if (matches.length === 0) {
+            renderBoard(board);
+            resolve(anyMatched);
+            return;
+          }
+
+          anyMatched = true;
+          if (addScore) {
+            const base = matches.length * 10;
+            const bonus = matches.length > 3 ? Math.floor((matches.length - 3) * 20) : 0;
+            score += base + bonus;
+            updateScore();
+          }
+
+          const cells = document.querySelectorAll('.cell');
+          const matchSet = new Set(matches.map(m => `${m.row},${m.col}`));
+          cells.forEach(cell => {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            if (matchSet.has(`${r},${c}`)) {
+              cell.classList.add('explode');
+            }
+          });
+
+          setTimeout(() => {
+            for (let m of matches) {
+              board[m.row][m.col] = -1;
+            }
+            applyGravity(board);
+            renderBoard(board);
+            step();
+          }, 420);
+        }
+
+        step();
+      });
+    }
+
+    async function trySwap(row1, col1, row2, col2) {
+      if (isProcessing) return false;
+      const rowDiff = Math.abs(row1 - row2);
+      const colDiff = Math.abs(col1 - col2);
+      if (!((rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1))) return false;
+
+      const temp = board[row1][col1];
+      board[row1][col1] = board[row2][col2];
+      board[row2][col2] = temp;
+
+      const matches = findAllMatches(board);
+      if (matches.length > 0) {
+        isProcessing = true;
+        renderBoard(board);
+        await processBoardWithAnimation(board, true);
+        clearSelection();
+        renderBoard(board);
+        isProcessing = false;
+        return true;
+      } else {
+        const tempBack = board[row1][col1];
+        board[row1][col1] = board[row2][col2];
+        board[row2][col2] = tempBack;
+        renderBoard(board);
+        return false;
+      }
+    }
+
+    function renderBoard(board) {
+      boardElement.innerHTML = '';
+      const emojis = ['🍎', '🍏', '🍒', '🍇', '🍊', '🍓'];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          const candyType = board[r][c];
+          cell.className = `cell candy-${candyType}`;
+          cell.textContent = emojis[candyType % emojis.length] || '🍬';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+
+          if (selectedRow === r && selectedCol === c) {
+            cell.classList.add('selected');
+          }
+
+          cell.addEventListener('click', onCellClick);
+          boardElement.appendChild(cell);
+        }
+      }
+    }
+
+    async function onCellClick(e) {
+      if (isProcessing) return;
+      const row = parseInt(e.currentTarget.dataset.row);
+      const col = parseInt(e.currentTarget.dataset.col);
+
+      if (selectedRow === -1 && selectedCol === -1) {
+        selectedRow = row;
+        selectedCol = col;
+        renderBoard(board);
+        return;
+      }
+
+      if (selectedRow === row && selectedCol === col) {
+        clearSelection();
+        renderBoard(board);
+        return;
+      }
+
+      const success = await trySwap(selectedRow, selectedCol, row, col);
+      if (success) {
+        clearSelection();
+        renderBoard(board);
+      } else {
+        selectedRow = row;
+        selectedCol = col;
+        renderBoard(board);
+      }
+    }
+
+    function clearSelection() {
+      selectedRow = -1;
+      selectedCol = -1;
+    }
+
+    function updateScore() {
+      scoreSpan.textContent = score;
+    }
+
+    async function resetGame() {
+      if (isProcessing) return;
+      let newBoard = createRandomBoard();
+      newBoard = removeInitialMatches(newBoard);
+      board = newBoard;
+      score = 0;
+      clearSelection();
+      renderBoard(board);
+      updateScore();
+      isProcessing = false;
+    }
+
+    function initGame() {
+      let initialBoard = createRandomBoard();
+      initialBoard = removeInitialMatches(initialBoard);
+      board = initialBoard;
+      score = 0;
+      clearSelection();
+      renderBoard(board);
+      updateScore();
+      document.getElementById('resetGameBtn').addEventListener('click', resetGame);
+    }
+
+    initGame();
+  })();
+</script>
+</body>
+</html>
