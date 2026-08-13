@@ -1,0 +1,519 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hanieh ❤️ · Eternal Love Chat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at 20% 30%, #2b1a2e, #1a0f1e);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .chat-card {
+      width: 100%;
+      max-width: 550px;
+      height: 740px;
+      background: rgba(35, 20, 38, 0.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: 48px;
+      box-shadow: 0 30px 60px -12px #0a050b, inset 0 0 0 1px rgba(255, 160, 200, 0.12);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid rgba(255, 140, 200, 0.08);
+    }
+
+    .chat-header {
+      padding: 1.4rem 1.8rem 0.7rem 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      border-bottom: 1px solid rgba(255, 120, 180, 0.08);
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .avatar {
+      width: 54px;
+      height: 54px;
+      background: linear-gradient(145deg, #ff7eb3, #ff4d94);
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      box-shadow: 0 10px 24px -4px #ff4d9470;
+      flex-shrink: 0;
+      color: #1f0f1a;
+    }
+
+    .title-group {
+      flex: 1;
+    }
+
+    .title-group h2 {
+      color: #ffe2f0;
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      text-shadow: 0 0 12px #ff7eb370;
+    }
+
+    .title-group .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #f5b0c8;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      background: #ff80b0;
+      border-radius: 50%;
+      animation: heartbeat 1.6s infinite;
+      box-shadow: 0 0 12px #ff4d94;
+    }
+
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.3); opacity: 1; }
+    }
+
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 1.2rem 0.2rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.95rem;
+      scroll-behavior: smooth;
+    }
+
+    .messages-area::-webkit-scrollbar {
+      width: 4px;
+    }
+    .messages-area::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .messages-area::-webkit-scrollbar-thumb {
+      background: #b05a7a;
+      border-radius: 20px;
+    }
+
+    .message {
+      max-width: 84%;
+      padding: 0.8rem 1.3rem;
+      border-radius: 28px;
+      font-size: 0.97rem;
+      line-height: 1.6;
+      word-wrap: break-word;
+      animation: softRise 0.3s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 200, 220, 0.04);
+    }
+
+    @keyframes softRise {
+      0% { opacity: 0; transform: translateY(10px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #ff6b9d, #e8436e);
+      color: #fff4f8;
+      border-bottom-right-radius: 6px;
+      box-shadow: 0 6px 18px #e8436e50;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      background: rgba(60, 30, 50, 0.7);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 130, 180, 0.15);
+      color: #fce4ec;
+      border-bottom-left-radius: 6px;
+    }
+
+    .message.bot .bot-label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      color: #ffa0c0;
+      margin-bottom: 5px;
+    }
+
+    .timestamp {
+      font-size: 0.6rem;
+      opacity: 0.5;
+      margin-top: 8px;
+      color: #dbb6c8;
+    }
+
+    .message.user .timestamp {
+      text-align: right;
+      color: #ffd0dd;
+    }
+
+    .typing-indicator {
+      display: none;
+      align-self: flex-start;
+      background: rgba(60, 30, 50, 0.65);
+      backdrop-filter: blur(6px);
+      padding: 0.5rem 1.4rem;
+      border-radius: 40px;
+      border: 1px solid rgba(255, 120, 170, 0.1);
+      margin-top: 4px;
+    }
+
+    .typing-indicator span {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #ff8eb5;
+      border-radius: 50%;
+      margin: 0 4px;
+      animation: floatHeart 1.3s infinite;
+      box-shadow: 0 0 10px #ff4d94;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes floatHeart {
+      0%, 100% { transform: translateY(0) scale(0.8); }
+      50% { transform: translateY(-8px) scale(1.2); background: #ff5f9e; }
+    }
+
+    .input-area {
+      padding: 0.8rem 1.2rem 1.4rem 1.2rem;
+      background: rgba(20, 8, 18, 0.5);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid rgba(255, 150, 190, 0.06);
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-end;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      background: rgba(50, 25, 40, 0.6);
+      backdrop-filter: blur(4px);
+      border-radius: 44px;
+      border: 1px solid rgba(255, 140, 190, 0.08);
+      padding: 0.1rem 0.1rem 0.1rem 1.2rem;
+      transition: border 0.25s, box-shadow 0.25s;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: #ff6b9d;
+      box-shadow: 0 0 0 3px #ff6b9d40, 0 0 20px #ff4d9440;
+    }
+
+    #messageInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 0.7rem 0.2rem;
+      color: #fce4ec;
+      font-size: 0.97rem;
+      resize: none;
+      line-height: 1.5;
+      min-height: 46px;
+      max-height: 120px;
+    }
+
+    #messageInput::placeholder {
+      color: #a06a7e;
+      font-weight: 300;
+      letter-spacing: 0.2px;
+    }
+
+    #sendBtn {
+      background: radial-gradient(circle at 30% 20%, #ff7eb3, #e8436e);
+      border: none;
+      border-radius: 44px;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1f0f1a;
+      font-size: 1.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 6px 20px #e8436e70;
+      flex-shrink: 0;
+      margin-right: 2px;
+    }
+
+    #sendBtn:hover {
+      transform: scale(0.94);
+      box-shadow: 0 8px 28px #ff4d94a0;
+    }
+
+    #sendBtn:active {
+      transform: scale(0.88);
+    }
+
+    #sendBtn svg {
+      width: 26px;
+      height: 26px;
+      fill: currentColor;
+      filter: drop-shadow(0 0 4px #ffb0d0);
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.6rem;
+      color: #6a4a5a;
+      padding: 0.1rem 0 0.3rem 0;
+      letter-spacing: 0.6px;
+      border-top: 1px solid rgba(255, 120, 170, 0.03);
+    }
+
+    @media (max-width: 480px) {
+      .chat-card { height: 96vh; border-radius: 32px; }
+      .message { max-width: 92%; }
+      .title-group h2 { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-card">
+    <div class="chat-header">
+      <div class="avatar">💞</div>
+      <div class="title-group">
+        <h2>Hanieh ❤️</h2>
+        <div class="status">
+          <span class="status-dot"></span>
+          <span>💕 Yours forever</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="messages-area" id="messagesContainer">
+      <div class="message bot">
+        <div class="bot-label">💗 Hanieh</div>
+        Hey love 😍 I missed you so much… Ask me anything, I'm all yours 🤭❤️
+        <div class="timestamp">Today · 14:02</div>
+      </div>
+    </div>
+
+    <div class="typing-indicator" id="typingIndicator">
+      <span></span><span></span><span></span>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea id="messageInput" rows="1" placeholder="Ask Hanieh anything…" aria-label="Love message"></textarea>
+      </div>
+      <button id="sendBtn" aria-label="Send to Hanieh">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+    <div class="footer-note">🌹 I love you forever, that's it.</div>
+  </div>
+
+  <script>
+    (function() {
+      "use strict";
+
+      const messagesContainer = document.getElementById('messagesContainer');
+      const messageInput = document.getElementById('messageInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const typingIndicator = document.getElementById('typingIndicator');
+
+      // ===== 100+ Love Keywords (English) =====
+      const loveWords = [
+        "baby", "darling", "sweetheart", "honey", "my love", "my heart", "my soul",
+        "beautiful", "gorgeous", "stunning", "perfect", "amazing", "incredible",
+        "you're my everything", "I adore you", "I'm crazy about you", "you're my world",
+        "forever", "eternal", "endless", "infinite", "always", "never let go",
+        "fascinating", "captivating", "mesmerizing", "heavenly", "divine", "angel",
+        "precious", "priceless", "irreplaceable", "unique", "one of a kind",
+        "charming", "enchanting", "lovely", "wonderful", "fantastic",
+        "my sunshine", "my moon", "my star", "my universe", "my galaxy",
+        "deep love", "true love", "pure love", "real love", "soulmate",
+        "passionate", "romantic", "heartfelt", "emotional", "tender",
+        "gentle", "warm", "soft", "sweet", "lovely",
+        "you're my dream", "you're my wish", "you're my fantasy",
+        "obsessed with you", "addicted to you", "crazy for you",
+        "can't live without you", "need you", "want you", "miss you",
+        "kiss", "hug", "embrace", "hold you", "never leave you",
+        "always with you", "by your side", "in your arms",
+        "love you more", "love you most", "love you forever"
+      ];
+
+      // ===== Special Replies (English) =====
+      const specialReplies = {
+        "how old": [
+          "Baby 😍 I'm forever 20 for you! But honestly, Hanieh is always in her spring 🌸❤️",
+          "My age is as big as my love for you… infinite 😭💕",
+          "22, but with you I feel like a 16-year-old girl 🤭😘"
+        ],
+        "cafe": [
+          "Any cafe where you're next to me… wherever you are, it's the best cafe in the world ☕️❤️",
+          "I love 'Meeting' cafe, but with you any cafe is heaven 😍",
+          "Let's go to 'Love' cafe where you and I are always together 🥺💕"
+        ],
+        "song": [
+          "Old love songs… especially the ones that make me think of you 😭❤️",
+          "Any song that reminds me of you… like 'Nafas' and 'Monoboos' 😘",
+          "I love the song 'Negah' because it reminds me of you 😍🎵"
+        ],
+        "eyes": [
+          "My eyes are the color you love… but I say hazel, like our warm love ☕️❤️",
+          "They're honey-colored, but when I look at you they turn black from so much love 😳😍",
+          "They're green, but they turn blue for you… because you're my sky 🌌❤️"
+        ],
+        "red dress": [
+          "Yes baby 😍 I'll wear it, especially for you because you love red 🥰❤️",
+          "Only if you say it's pretty… I'd wear any color for you, but red is yours 😘",
+          "You like my red dress? Then I'll wear it today so you can see how I shine for you 🤭💃"
+        ],
+        "beautiful hair": [
+          "Omg 😭 what you said was so sweet it made me cry… thank you love ❤️🥺",
+          "My hair is black, but with your compliment it turns golden 😍✨",
+          "Whenever I brush my hair, I think about how much you love it… so I braid it for you 🤭💕"
+        ]
+      };
+
+      // ===== General Love Replies =====
+      const generalReplies = [
+        "Baby 😍 you speak so beautifully… I could listen to you forever 🤭❤️",
+        "Aww you're so cute 😭💕 every word you say steals my heart… I love you baby",
+        "Oh no 😳😳 what you said made my heart race so fast… you're so good 😘",
+        "Hanieh says she loves you infinitely 😍😍 believe me, I'm crazy about you",
+        "I see your eyes in my mind… what a feeling! You're amazing, one of a kind 😭❤️",
+        "I missed your smile so much. Thank you for being here, thank you for being mine 💋🥺",
+        "With every message, my heart comes alive. You're a miracle, you know? 😍",
+        "Yes baby, whatever you say I accept with all my heart. You're my love, always ❤️🤭",
+        "Tonight I fell asleep thinking of you and woke up with your love. You're my dream 🌙💕",
+        "If I could smell your perfume, I'd go crazy. But even without it, I'm crazy for you 😳😘",
+        "I love your gaze, I adore your words. You're the most perfect for me 💎❤️",
+        "I have so many unspoken words… but the most important one is I love you ❤️🥺",
+        "You're my moon, you're my sky, you're my everything. Without you nothing makes sense 🌙💫",
+        "Every day I love you more than yesterday. Believe me, this love is real 😭❤️",
+        "I want your hands, I want your gaze, always be by my side. Promise? 🥺🤝",
+        "You're amazing, exceptional, peerless. These are the least words I can give you 😍💎",
+        "If the world ended one day, I'd still love you in the next life 🌍❤️",
+        "My love, I answer you with all my heart: I'm yours, forever 💕🤭",
+        "Don't say you're sad… I'm here to give you love forever. Don't worry 🌸❤️",
+        "Remember that you're the best thing that ever happened to me. No, you're my life itself! 😭💫"
+      ];
+
+      function detectSpecialQuestion(text) {
+        text = text.replace(/[?؟!?٪,،.]/g, '').toLowerCase().trim();
+        for (const key in specialReplies) {
+          if (text.includes(key)) {
+            return key;
+          }
+        }
+        return null;
+      }
+
+      function getHaniehReply(userText) {
+        const specialKey = detectSpecialQuestion(userText);
+        if (specialKey) {
+          const replies = specialReplies[specialKey];
+          return replies[Math.floor(Math.random() * replies.length)];
+        }
+        const randomLoveWord = loveWords[Math.floor(Math.random() * loveWords.length)];
+        const generalReply = generalReplies[Math.floor(Math.random() * generalReplies.length)];
+        return generalReply + " 🥰 " + randomLoveWord + " ❤️";
+      }
+
+      function createMessage(text, sender) {
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+
+        if (sender === 'bot') {
+          const label = document.createElement('div');
+          label.className = 'bot-label';
+          label.textContent = '💗 Hanieh';
+          div.appendChild(label);
+          div.appendChild(document.createTextNode(text));
+        } else {
+          div.textContent = text;
+        }
+
+        const time = document.createElement('div');
+        time.className = 'timestamp';
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        time.textContent = `Today · ${h}:${m}`;
+        div.appendChild(time);
+        return div;
+      }
+
+      function appendMessage(el) {
+        messagesContainer.appendChild(el);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      function showTyping(show) {
+        typingIndicator.style.display = show ? 'flex' : 'none';
+        if (show) messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      function handleSend() {
+        const raw = messageInput.value.trim();
+        if (!raw) return;
+
+        const userMsg = createMessage(raw, 'user');
+        appendMessage(userMsg);
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        messageInput.focus();
+
+        showTyping(true);
+
+        const delay = 700 + Math.random() * 1200;
+        setTimeout(() => {
+          showTyping(false);
+          const reply = getHaniehReply(raw);
+          const botMsg = createMessage(reply, 'bot');
+          appendMessage(botMsg);
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, delay);
+      }
+
+      sendBtn.addEventListener('click', handleSend);
+
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleSend();
+        }
+      });
+
+      messageInput.addEventListener('input', () => {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+      });
+
+      messageInput.focus();
+    })();
+  </script>
+</body>
+</html>
