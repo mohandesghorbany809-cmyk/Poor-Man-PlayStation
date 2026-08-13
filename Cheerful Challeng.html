@@ -1,0 +1,822 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Happiness Predictor ✨</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(145deg, #0b0e1a 0%, #1a1f2f 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+      padding: 24px;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 70% 30%, rgba(255, 215, 150, 0.04) 0%, transparent 60%),
+                  radial-gradient(circle at 20% 80%, rgba(200, 180, 255, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      background: rgba(22, 28, 46, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 56px 56px 48px 48px;
+      box-shadow: 0 40px 70px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 215, 175, 0.08);
+      padding: 40px 38px;
+      max-width: 820px;
+      width: 100%;
+      border: 1px solid rgba(255, 215, 175, 0.12);
+      transition: all 0.3s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #f6d5b3 0%, #f0b98d 50%, #e8a77a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-shadow: 0 2px 20px rgba(232, 167, 122, 0.15);
+    }
+
+    .header .subtitle {
+      color: rgba(255, 215, 175, 0.6);
+      font-size: 1rem;
+      font-weight: 300;
+      letter-spacing: 1px;
+      border-top: 1px solid rgba(255, 215, 175, 0.1);
+      padding-top: 14px;
+      margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .header .subtitle span {
+      background: rgba(255, 215, 175, 0.06);
+      padding: 4px 16px;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      border: 1px solid rgba(255, 215, 175, 0.08);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px 24px;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: #d4c0b0;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .field label i {
+      font-style: normal;
+      font-size: 1.2rem;
+      opacity: 0.8;
+    }
+
+    .field input,
+    .field select {
+      background: rgba(255, 248, 240, 0.04);
+      border: 1.5px solid rgba(255, 215, 175, 0.12);
+      border-radius: 30px;
+      padding: 14px 20px;
+      font-size: 0.95rem;
+      color: #f0e3d8;
+      transition: all 0.25s ease;
+      outline: none;
+      font-family: inherit;
+      width: 100%;
+      backdrop-filter: blur(4px);
+    }
+
+    .field input::placeholder {
+      color: rgba(255, 215, 175, 0.25);
+      font-weight: 300;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #e8a77a;
+      box-shadow: 0 0 0 4px rgba(232, 167, 122, 0.08), 0 0 20px rgba(232, 167, 122, 0.03);
+      background: rgba(255, 248, 240, 0.07);
+    }
+
+    .field select option {
+      background: #1a1f2f;
+      color: #f0e3d8;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 24px;
+      background: rgba(255, 248, 240, 0.03);
+      padding: 10px 20px;
+      border-radius: 40px;
+      border: 1.5px solid rgba(255, 215, 175, 0.10);
+      align-items: center;
+      flex-wrap: wrap;
+      backdrop-filter: blur(4px);
+    }
+
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 400;
+      color: #d4c0b0;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .radio-group label:hover {
+      color: #f0e3d8;
+    }
+
+    .radio-group input[type="radio"] {
+      accent-color: #e8a77a;
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      filter: drop-shadow(0 0 6px rgba(232, 167, 122, 0.2));
+      cursor: pointer;
+    }
+
+    .action-btn {
+      background: linear-gradient(135deg, #d49064 0%, #c47a4e 100%);
+      border: none;
+      border-radius: 60px;
+      padding: 18px 24px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #0b0e1a;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1);
+      box-shadow: 0 8px 0 #8f5d3b, 0 10px 30px rgba(232, 167, 122, 0.15);
+      margin-top: 14px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+      opacity: 0;
+      transition: 0.5s;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 0 #8f5d3b, 0 18px 40px rgba(232, 167, 122, 0.25);
+    }
+
+    .action-btn:hover::after {
+      opacity: 1;
+    }
+
+    .action-btn:active {
+      transform: translateY(5px);
+      box-shadow: 0 4px 0 #8f5d3b;
+    }
+
+    .result-box {
+      margin-top: 32px;
+      background: rgba(255, 248, 240, 0.03);
+      border-radius: 40px;
+      padding: 24px 28px;
+      border-left: 6px solid #e8a77a;
+      box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      min-height: 80px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 215, 175, 0.06);
+    }
+
+    .result-box h3 {
+      font-size: 1.7rem;
+      color: #f0e3d8;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .result-box .result-detail {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 28px;
+      padding: 18px 22px;
+      border: 1px solid rgba(255, 215, 175, 0.06);
+    }
+
+    .result-box p {
+      color: #d4c0b0;
+      line-height: 1.7;
+      margin: 6px 0;
+      font-size: 0.95rem;
+    }
+
+    .result-box .badge {
+      display: inline-block;
+      background: rgba(232, 167, 122, 0.12);
+      color: #f0d5be;
+      padding: 4px 18px;
+      border-radius: 60px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid rgba(232, 167, 122, 0.15);
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 16px;
+      color: rgba(255, 215, 175, 0.2);
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    .lang-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 999;
+      background: rgba(22, 28, 46, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 215, 175, 0.15);
+      border-radius: 40px;
+      padding: 8px 18px;
+      color: #f0e3d8;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .lang-toggle:hover {
+      background: rgba(232, 167, 122, 0.15);
+      border-color: rgba(232, 167, 122, 0.3);
+      transform: scale(1.03);
+    }
+
+    @media (max-width: 680px) {
+      .card {
+        padding: 28px 20px;
+        border-radius: 40px;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .header h1 {
+        font-size: 2rem;
+      }
+      .radio-group {
+        padding: 10px 16px;
+        gap: 16px;
+      }
+      .result-box {
+        padding: 18px 16px;
+      }
+      .lang-toggle {
+        top: 12px;
+        right: 12px;
+        padding: 6px 14px;
+        font-size: 0.75rem;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .header h1 {
+        font-size: 1.6rem;
+        gap: 6px;
+      }
+      .action-btn {
+        font-size: 1rem;
+        padding: 16px;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 215, 175, 0.02);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(232, 167, 122, 0.3);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(232, 167, 122, 0.5);
+    }
+  </style>
+</head>
+<body>
+
+  <a href="#" class="lang-toggle" id="langToggle">🇬🇧 English</a>
+
+  <div class="card">
+    <div class="header">
+      <h1>
+        <span>✨</span> <span id="mainTitle">Happiness Predictor</span>
+        <span>🔮</span>
+      </h1>
+      <div class="subtitle">
+        <span id="sub1">🧘 90% job recognition accuracy</span>
+        <span id="sub2">💰 Income = key factor</span>
+        <span id="sub3">🌈 Even with $0, there's hope</span>
+      </div>
+    </div>
+
+    <form id="happinessForm">
+      <div class="form-grid">
+        <div class="field">
+          <label><i>👤</i> <span id="lblFirstName">First Name</span></label>
+          <input type="text" id="firstName" placeholder="e.g. Sarah" required>
+        </div>
+        <div class="field">
+          <label><i>🧑‍🤝‍🧑</i> <span id="lblLastName">Last Name</span></label>
+          <input type="text" id="lastName" placeholder="e.g. Johnson" required>
+        </div>
+
+        <div class="field">
+          <label><i>🎂</i> <span id="lblAge">Age</span></label>
+          <input type="number" id="age" placeholder="e.g. 32" min="1" max="120" required>
+        </div>
+
+        <div class="field">
+          <label><i>💼</i> <span id="lblJob">Job (type it)</span></label>
+          <input type="text" id="jobInput" placeholder="e.g. Software Engineer, Teacher, Doctor..." list="jobSuggestions" required>
+          <datalist id="jobSuggestions">
+            <option value="Software Engineer"></option>
+            <option value="Web Developer"></option>
+            <option value="Data Scientist"></option>
+            <option value="AI Specialist"></option>
+            <option value="Civil Engineer"></option>
+            <option value="Mechanical Engineer"></option>
+            <option value="Electrical Engineer"></option>
+            <option value="Industrial Engineer"></option>
+            <option value="Teacher"></option>
+            <option value="Professor"></option>
+            <option value="Doctor"></option>
+            <option value="Surgeon"></option>
+            <option value="Cardiologist"></option>
+            <option value="Dentist"></option>
+            <option value="Nurse"></option>
+            <option value="Pharmacist"></option>
+            <option value="CEO"></option>
+            <option value="Marketing Manager"></option>
+            <option value="Project Manager"></option>
+            <option value="HR Manager"></option>
+            <option value="Lawyer"></option>
+            <option value="Judge"></option>
+            <option value="Accountant"></option>
+            <option value="Financial Advisor"></option>
+            <option value="Entrepreneur"></option>
+            <option value="Graphic Designer"></option>
+            <option value="UI/UX Designer"></option>
+            <option value="Industrial Designer"></option>
+            <option value="Painter"></option>
+            <option value="Photographer"></option>
+            <option value="Director"></option>
+            <option value="Writer"></option>
+            <option value="Journalist"></option>
+            <option value="Actor"></option>
+            <option value="Musician"></option>
+            <option value="Composer"></option>
+            <option value="Professional Athlete"></option>
+            <option value="Sports Coach"></option>
+            <option value="Veterinarian"></option>
+            <option value="Farmer"></option>
+            <option value="Gardener"></option>
+            <option value="Chemist"></option>
+            <option value="Biologist"></option>
+            <option value="Physicist"></option>
+            <option value="Astronomer"></option>
+            <option value="Geologist"></option>
+            <option value="Translator"></option>
+            <option value="Language Teacher"></option>
+            <option value="Psychologist"></option>
+            <option value="Social Worker"></option>
+            <option value="Chef"></option>
+            <option value="Baker"></option>
+            <option value="Salesperson"></option>
+            <option value="Marketer"></option>
+            <option value="Bank Clerk"></option>
+            <option value="Insurance Agent"></option>
+            <option value="Receptionist"></option>
+            <option value="Taxi Driver"></option>
+            <option value="Truck Driver"></option>
+            <option value="Bus Driver"></option>
+            <option value="Pilot"></option>
+            <option value="Flight Attendant"></option>
+            <option value="Computer Technician"></option>
+            <option value="Electrician"></option>
+            <option value="Mechanic"></option>
+            <option value="Carpenter"></option>
+            <option value="Welder"></option>
+            <option value="Construction Worker"></option>
+            <option value="Architect"></option>
+            <option value="Urban Planner"></option>
+            <option value="Archaeologist"></option>
+            <option value="Librarian"></option>
+            <option value="Researcher"></option>
+            <option value="Scientist"></option>
+            <option value="Student"></option>
+            <option value="Retired"></option>
+            <option value="Housekeeper"></option>
+            <option value="Other"></option>
+          </datalist>
+        </div>
+
+        <div class="field">
+          <label><i>💰</i> <span id="lblIncome">Monthly Income ($)</span></label>
+          <input type="number" id="income" placeholder="e.g. 5000" min="0" step="100" required>
+        </div>
+
+        <div class="field">
+          <label><i>🚗</i> <span id="lblCar">Car (model)</span></label>
+          <input type="text" id="car" placeholder="e.g. Tesla Model 3" required>
+        </div>
+
+        <div class="field full-width">
+          <label><i>❤️</i> <span id="lblMarital">Marital Status</span></label>
+          <div class="radio-group">
+            <label><input type="radio" name="marital" value="Married" checked> <span id="rdoMarried">Married</span></label>
+            <label><input type="radio" name="marital" value="Single"> <span id="rdoSingle">Single</span></label>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="action-btn">
+        <span>🔮</span> <span id="btnText">Calculate Happiness</span>
+        <span>✨</span>
+      </button>
+    </form>
+
+    <div id="resultContainer" class="result-box" style="display: none;">
+      <h3 id="resultTitle">😊 Result</h3>
+      <div id="resultContent"></div>
+    </div>
+    <div class="footer-note">🔹 Data is for display only • AI Happiness Predictor</div>
+  </div>
+
+  <script>
+    (function() {
+      const form = document.getElementById('happinessForm');
+      const resultContainer = document.getElementById('resultContainer');
+      const resultTitle = document.getElementById('resultTitle');
+      const resultContent = document.getElementById('resultContent');
+
+      // Job score dictionary (0-10)
+      const jobScores = {
+        'doctor': 9, 'surgeon': 9, 'cardiologist': 9, 'dentist': 9, 'nurse': 7, 'pharmacist': 8,
+        'software engineer': 8, 'web developer': 8, 'developer': 8, 'civil engineer': 7, 'mechanical engineer': 7,
+        'electrical engineer': 7, 'industrial engineer': 7, 'architect': 7, 'urban planner': 6, 'network engineer': 7,
+        'ai specialist': 9, 'data scientist': 9,
+        'ceo': 8, 'project manager': 7, 'marketing manager': 7, 'hr manager': 6, 'cto': 8,
+        'product manager': 7, 'entrepreneur': 8, 'school principal': 6,
+        'lawyer': 8, 'judge': 8, 'accountant': 7, 'financial advisor': 7,
+        'teacher': 6, 'professor': 8, 'language teacher': 6, 'psychologist': 7, 'social worker': 5,
+        'researcher': 8, 'scientist': 9, 'biologist': 7, 'chemist': 7, 'physicist': 8, 'astronomer': 8,
+        'graphic designer': 6, 'ui/ux designer': 6, 'industrial designer': 6, 'painter': 6, 'photographer': 6,
+        'director': 7, 'writer': 7, 'journalist': 6, 'actor': 6, 'musician': 6, 'composer': 7,
+        'professional athlete': 7, 'sports coach': 6, 'lifeguard': 5,
+        'computer technician': 6, 'electrician': 6, 'mechanic': 6, 'carpenter': 5, 'welder': 5,
+        'construction worker': 4, 'factory worker': 4, 'machine operator': 5, 'taxi driver': 4,
+        'truck driver': 4, 'bus driver': 4, 'pilot': 8, 'flight attendant': 6,
+        'farmer': 5, 'gardener': 5, 'veterinarian': 7,
+        'salesperson': 5, 'marketer': 5, 'bank clerk': 5, 'insurance agent': 5, 'receptionist': 4,
+        'librarian': 5, 'archaeologist': 7,
+        'chef': 5, 'baker': 5,
+        'police': 5, 'firefighter': 5,
+        'student': 4, 'retired': 5, 'housekeeper': 3,
+        'other': 5, 'translator': 6, 'researcher': 7
+      };
+
+      function getJobScore(jobText) {
+        if (!jobText) return 5;
+        const clean = jobText.trim().toLowerCase();
+        let bestScore = 5;
+
+        for (const [key, value] of Object.entries(jobScores)) {
+          const keyClean = key.toLowerCase();
+          if (clean.includes(keyClean) || keyClean.includes(clean)) {
+            if (clean === keyClean || keyClean.includes(clean) || clean.includes(keyClean)) {
+              bestScore = value;
+              break;
+            }
+            if (clean.split(' ').some(word => keyClean.includes(word) || word.includes(keyClean))) {
+              if (value > bestScore) bestScore = value;
+            }
+          }
+        }
+        return bestScore;
+      }
+
+      function calculateHappiness(age, jobScore, income, car, marital) {
+        const incomeInK = income / 1000;
+        let incomeScore = 0;
+        if (incomeInK >= 50) incomeScore = 6;
+        else if (incomeInK >= 30) incomeScore = 5;
+        else if (incomeInK >= 20) incomeScore = 4;
+        else if (incomeInK >= 10) incomeScore = 3;
+        else if (incomeInK >= 5) incomeScore = 2;
+        else if (incomeInK >= 2) incomeScore = 1;
+        else incomeScore = 0;
+
+        let ageScore = 0;
+        if (age >= 25 && age <= 45) ageScore = 1.5;
+        else if (age >= 46 && age <= 60) ageScore = 1;
+        else if (age > 60) ageScore = 0.5;
+        else ageScore = 0;
+
+        let carScore = 0;
+        if (car && car.trim().length > 2) {
+          const carLower = car.toLowerCase();
+          if (carLower.includes('bmw') || carLower.includes('mercedes') || carLower.includes('audi') ||
+              carLower.includes('porsche') || carLower.includes('lexus') || carLower.includes('tesla')) {
+            carScore = 2.5;
+          } else if (carLower.includes('honda') || carLower.includes('toyota') || carLower.includes('ford') ||
+                     carLower.includes('hyundai') || carLower.includes('kia')) {
+            carScore = 1.5;
+          } else {
+            carScore = 1;
+          }
+        } else {
+          carScore = 0;
+        }
+
+        let maritalScore = (marital === 'Married') ? 1.5 : 0.5;
+
+        let total = jobScore + incomeScore + ageScore + carScore + maritalScore;
+        const maxScore = 15;
+        if (total > maxScore) total = maxScore;
+
+        let level, emoji, description;
+        if (total >= 13) {
+          level = 'Legendarily Happy';
+          emoji = '👑';
+          description = "You're at the peak of happiness! Great job, amazing income, dream life.";
+        } else if (total >= 10.5) {
+          level = 'Very Happy';
+          emoji = '🌟';
+          description = "You're doing excellent. Keep up the good path.";
+        } else if (total >= 8) {
+          level = 'Happy';
+          emoji = '😊';
+          description = "Things are good! A little effort can take you higher.";
+        } else if (total >= 5.5) {
+          level = 'On the Growth Path';
+          emoji = '🌱';
+          description = "There's room for improvement, but don't lose hope. Every day is a new chance.";
+        } else if (total >= 3) {
+          level = 'Starting the Journey';
+          emoji = '🌅';
+          description = "Maybe things aren't ideal now, but you've taken the first step. Work on skills and income.";
+        } else {
+          level = 'Hopeful';
+          emoji = '☀️';
+          description = "Life always offers new opportunities. With planning and effort, you can reach happiness.";
+        }
+
+        return { total, level, emoji, description };
+      }
+
+      function showResult(data) {
+        const { firstName, lastName, age, job, income, car, marital, jobScore, total, level, emoji, description } = data;
+
+        const jobDisplay = job || 'Unknown';
+        const carDisplay = car || "Don't have";
+
+        resultContainer.style.display = 'block';
+        resultTitle.innerHTML = `${emoji} ${level}`;
+
+        resultContent.innerHTML = `
+          <div class="result-detail">
+            <p><strong>👤 ${firstName} ${lastName}</strong>  •  ${age} years old  •  ${marital}</p>
+            <p>💼 Job: <span class="badge">${jobDisplay}</span>  •  💰 Income: $${income.toLocaleString()}</p>
+            <p>🚗 Car: <span class="badge">${carDisplay}</span></p>
+            <hr style="border: 0; border-top: 1px solid rgba(255,215,175,0.1); margin: 14px 0;">
+            <p style="font-size: 1.1rem;"><strong>Happiness Score:</strong> ${total.toFixed(1)} out of 15</p>
+            <p style="font-size: 1rem; margin-top: 8px; color: #f0e3d8;">📌 ${description}</p>
+            <p style="font-size: 0.8rem; color: rgba(255,215,175,0.3); margin-top: 10px;">🔍 90% job recognition accuracy • Income is key</p>
+            <p style="font-size: 0.8rem; color: rgba(255,215,175,0.2); margin-top: 4px;">✨ Even with $0, there's always hope and room to grow</p>
+          </div>
+        `;
+      }
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const firstName = document.getElementById('firstName').value.trim() || 'Anonymous';
+        const lastName = document.getElementById('lastName').value.trim() || '';
+        const age = parseInt(document.getElementById('age').value, 10) || 0;
+        const jobInput = document.getElementById('jobInput').value.trim() || 'Other';
+        const income = parseFloat(document.getElementById('income').value) || 0;
+        const car = document.getElementById('car').value.trim() || "Don't have";
+        const marital = document.querySelector('input[name="marital"]:checked')?.value || 'Single';
+
+        if (!firstName || !lastName || age < 1 || age > 120 || income < 0 || !car) {
+          alert('Please fill all fields correctly (valid age, positive income, car is required)');
+          return;
+        }
+
+        const jobScore = getJobScore(jobInput);
+        const { total, level, emoji, description } = calculateHappiness(age, jobScore, income, car, marital);
+
+        const resultData = {
+          firstName,
+          lastName,
+          age,
+          job: jobInput,
+          income,
+          car,
+          marital,
+          jobScore,
+          total,
+          level,
+          emoji,
+          description
+        };
+
+        showResult(resultData);
+        resultContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+
+      // Language toggle functionality
+      let isEnglish = true;
+      const langToggle = document.getElementById('langToggle');
+
+      langToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        isEnglish = !isEnglish;
+
+        if (isEnglish) {
+          langToggle.textContent = '🇬🇧 English';
+          document.getElementById('mainTitle').textContent = 'Happiness Predictor';
+          document.getElementById('sub1').textContent = '🧘 90% job recognition accuracy';
+          document.getElementById('sub2').textContent = '💰 Income = key factor';
+          document.getElementById('sub3').textContent = '🌈 Even with $0, there\'s hope';
+          document.getElementById('lblFirstName').textContent = 'First Name';
+          document.getElementById('lblLastName').textContent = 'Last Name';
+          document.getElementById('lblAge').textContent = 'Age';
+          document.getElementById('lblJob').textContent = 'Job (type it)';
+          document.getElementById('lblIncome').textContent = 'Monthly Income ($)';
+          document.getElementById('lblCar').textContent = 'Car (model)';
+          document.getElementById('lblMarital').textContent = 'Marital Status';
+          document.getElementById('rdoMarried').textContent = 'Married';
+          document.getElementById('rdoSingle').textContent = 'Single';
+          document.getElementById('btnText').textContent = 'Calculate Happiness';
+          document.querySelector('#firstName').placeholder = 'e.g. Sarah';
+          document.querySelector('#lastName').placeholder = 'e.g. Johnson';
+          document.querySelector('#age').placeholder = 'e.g. 32';
+          document.querySelector('#jobInput').placeholder = 'e.g. Software Engineer, Teacher, Doctor...';
+          document.querySelector('#income').placeholder = 'e.g. 5000';
+          document.querySelector('#car').placeholder = 'e.g. Tesla Model 3';
+          // Update datalist to English
+          const datalist = document.getElementById('jobSuggestions');
+          const englishJobs = [
+            'Software Engineer', 'Web Developer', 'Data Scientist', 'AI Specialist',
+            'Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer', 'Industrial Engineer',
+            'Teacher', 'Professor', 'Doctor', 'Surgeon', 'Cardiologist', 'Dentist', 'Nurse', 'Pharmacist',
+            'CEO', 'Marketing Manager', 'Project Manager', 'HR Manager', 'Lawyer', 'Judge', 'Accountant',
+            'Financial Advisor', 'Entrepreneur', 'Graphic Designer', 'UI/UX Designer', 'Industrial Designer',
+            'Painter', 'Photographer', 'Director', 'Writer', 'Journalist', 'Actor', 'Musician', 'Composer',
+            'Professional Athlete', 'Sports Coach', 'Veterinarian', 'Farmer', 'Gardener', 'Chemist', 'Biologist',
+            'Physicist', 'Astronomer', 'Geologist', 'Translator', 'Language Teacher', 'Psychologist',
+            'Social Worker', 'Chef', 'Baker', 'Salesperson', 'Marketer', 'Bank Clerk', 'Insurance Agent',
+            'Receptionist', 'Taxi Driver', 'Truck Driver', 'Bus Driver', 'Pilot', 'Flight Attendant',
+            'Computer Technician', 'Electrician', 'Mechanic', 'Carpenter', 'Welder', 'Construction Worker',
+            'Architect', 'Urban Planner', 'Archaeologist', 'Librarian', 'Researcher', 'Scientist',
+            'Student', 'Retired', 'Housekeeper', 'Other'
+          ];
+          datalist.innerHTML = englishJobs.map(j => `<option value="${j}"></option>`).join('');
+        } else {
+          langToggle.textContent = '🇮🇷 فارسی';
+          document.getElementById('mainTitle').textContent = 'خوشبختی‌سنج';
+          document.getElementById('sub1').textContent = '🧘 با دقت ۹۰٪ شغل‌ها رو تشخیص می‌ده';
+          document.getElementById('sub2').textContent = '💰 درآمد = کلید اصلی';
+          document.getElementById('sub3').textContent = '🌈 حتی با ۰ تومان هم امید هست';
+          document.getElementById('lblFirstName').textContent = 'نام';
+          document.getElementById('lblLastName').textContent = 'نام خانوادگی';
+          document.getElementById('lblAge').textContent = 'سن';
+          document.getElementById('lblJob').textContent = 'شغل (تایپ کن)';
+          document.getElementById('lblIncome').textContent = 'درآمد ماهیانه (تومان)';
+          document.getElementById('lblCar').textContent = 'ماشین (مدل)';
+          document.getElementById('lblMarital').textContent = 'وضعیت تأهل';
+          document.getElementById('rdoMarried').textContent = 'متاهل';
+          document.getElementById('rdoSingle').textContent = 'مجرد';
+          document.getElementById('btnText').textContent = 'محاسبه خوشبختی';
+          document.querySelector('#firstName').placeholder = 'مثلاً: سارا';
+          document.querySelector('#lastName').placeholder = 'مثلاً: محمدی';
+          document.querySelector('#age').placeholder = 'مثلاً ۳۲';
+          document.querySelector('#jobInput').placeholder = 'مثلاً: برنامه‌نویس، معلم، دکتر، ...';
+          document.querySelector('#income').placeholder = 'مثلاً ۱۸۰۰۰۰۰۰';
+          document.querySelector('#car').placeholder = 'مثلاً: دنا پلاس ۱۴۰۲';
+          // Update datalist to Persian
+          const datalist = document.getElementById('jobSuggestions');
+          const persianJobs = [
+            'برنامه‌نویس وب', 'توسعه‌دهنده نرم‌افزار', 'مهندس نرم‌افزار', 'مهندس عمران',
+            'مهندس مکانیک', 'مهندس برق', 'مهندس صنایع', 'معلم ابتدایی', 'معلم ریاضی',
+            'استاد دانشگاه', 'پزشک عمومی', 'متخصص قلب', 'جراح', 'دندانپزشک', 'پرستار',
+            'داروساز', 'مدیر عامل', 'مدیر بازاریابی', 'مدیر پروژه', 'مدیر منابع انسانی',
+            'وکیل', 'حقوقدان', 'قاضی', 'حسابدار', 'حسابرس', 'مشاور مالی', 'کارآفرین',
+            'طراح گرافیک', 'طراح UI/UX', 'طراح صنعتی', 'نقاش', 'عکاس', 'کارگردان',
+            'نویسنده', 'روزنامه‌نگار', 'خبرنگار', 'مجری', 'بازیگر', 'خواننده', 'نوازنده',
+            'آهنگساز', 'ورزشکار حرفه‌ای', 'مربی ورزشی', 'دامپزشک', 'کشاورز', 'باغبان',
+            'شیمیدان', 'زیست‌شناس', 'فیزیکدان', 'اخترشناس', 'زمین‌شناس', 'مترجم',
+            'مدرس زبان', 'مشاور تحصیلی', 'روانشناس', 'مددکار اجتماعی', 'آشپز', 'سرآشپز',
+            'نانوا', 'فروشنده', 'بازاریاب', 'نماینده فروش', 'کارمند بانک', 'کارمند بیمه',
+            'منشی', 'دستیار مدیر', 'راننده تاکسی', 'راننده کامیون', 'راننده اتوبوس',
+            'خلبان', 'مهماندار', 'تکنسین کامپیوتر', 'تکنسین برق', 'تکنسین مکانیک',
+            'تعمیرکار موبایل', 'تعمیرکار خودرو', 'نجار', 'جوشکار', 'برق‌کار ساختمان',
+            'لوله‌کش', 'گچ‌کار', 'کاشی‌کار', 'نقاش ساختمان', 'معمار', 'شهرساز',
+            'باستان‌شناس', 'مرمت‌گر', 'کتابدار', 'آرشیویست', 'محقق', 'دانشمند', 'پژوهشگر',
+            'مربی مهدکودک', 'پرستار کودک', 'مدیر مدرسه', 'معاون آموزشی', 'مشاور شغلی',
+            'کارشناس فروش', 'کارشناس منابع انسانی', 'کارشناس مالی', 'کارشناس بیمه',
+            'کارشناس ارشد', 'دستیار پژوهش', 'تکنسین آزمایشگاه', 'تکنسین داروخانه',
+            'پرورش‌دهنده حیوانات', 'دامدار', 'زنبوردار', 'نجات‌غریق', 'آتش‌نشان',
+            'پلیس', 'سرباز', 'کارگر ساده', 'کارگر ساختمانی', 'کارگر کارخانه',
+            'اپراتور ماشین‌آلات', 'اپراتور رایانه', 'مدیر فناوری اطلاعات',
+            'متخصص امنیت شبکه', 'کارشناس داده', 'متخصص هوش مصنوعی', 'توسعه‌دهنده موبایل',
+            'توسعه‌دهنده بازی', 'مدیر محصول', 'اسکرام مستر', 'تحلیل‌گر سیستم‌ها',
+            'مشاور فناوری', 'مهندس شبکه', 'مدیر ارشد اجرایی', 'بازنشسته', 'دانشجو',
+            'خانه‌دار', 'سایر'
+          ];
+          datalist.innerHTML = persianJobs.map(j => `<option value="${j}"></option>`).join('');
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>
