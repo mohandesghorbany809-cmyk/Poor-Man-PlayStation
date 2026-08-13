@@ -1,0 +1,524 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adventure Quest</title>
+    <style>
+        /* ===== GLOBAL STYLES ===== */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            direction: ltr; /* English text direction */
+        }
+
+        /* ===== GAME CONTAINER ===== */
+        #game-container {
+            background-color: #16213e;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #f5a623;
+            margin-top: 0;
+            text-shadow: 0 0 10px rgba(245, 166, 35, 0.3);
+        }
+
+        /* ===== STORY TEXT AREA ===== */
+        #story {
+            background-color: #0f3460;
+            padding: 20px;
+            border-radius: 15px;
+            min-height: 150px;
+            margin: 20px 0;
+            line-height: 1.8;
+            font-size: 1.1rem;
+            text-align: left; /* Left align for English */
+            border-left: 4px solid #f5a623; /* Left border for English */
+            border-right: none;
+        }
+
+        /* ===== CHOICE BUTTONS ===== */
+        #choices {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .choice-btn {
+            background-color: #1a3a5c;
+            color: #fff;
+            border: 2px solid #2a5a7a;
+            padding: 14px 20px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .choice-btn:hover {
+            background-color: #f5a623;
+            color: #1a1a2e;
+            border-color: #f5a623;
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(245, 166, 35, 0.4);
+        }
+
+        /* ===== RESTART BUTTON ===== */
+        #restart-btn {
+            background-color: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        #restart-btn:hover {
+            background-color: #c73652;
+            transform: scale(1.05);
+        }
+
+        /* ===== STATS SECTION ===== */
+        #stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #2a5a7a;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .stat-item {
+            background-color: #0f3460;
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        /* ===== INVENTORY DISPLAY ===== */
+        #inventory {
+            margin-top: 10px;
+            color: #f5a623;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== GAME UI ===== -->
+    <div id="game-container">
+        <h1>⚔️ Adventure Quest</h1>
+        <div id="story">The story begins here...</div>
+        <div id="choices"></div>
+        <button id="restart-btn">🔄 Restart</button>
+        
+        <div id="stats">
+            <span class="stat-item">❤️ Health: <span id="health-display">10</span></span>
+            <span class="stat-item">⚔️ Power: <span id="power-display">5</span></span>
+        </div>
+        <div id="inventory">🎒 Inventory: <span id="inventory-display">Empty</span></div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  GAME STATE
+        // ============================================================
+        let state = {
+            health: 10,
+            power: 5,
+            inventory: [],
+            currentScene: 'start'
+        };
+
+        // ============================================================
+        //  SCENES (Story nodes)
+        // ============================================================
+        const scenes = {
+
+            // ----- START -----
+            start: {
+                story: `You stand at the entrance of an ancient, abandoned castle deep within a mystical forest. 
+                The air smells of damp earth and wildflowers. The wooden gate is slightly ajar, and you hear 
+                an owl hooting from the towers above. What will you do?`,
+                choices: [
+                    { text: '🚪 Enter the castle', next: 'castle_entrance' },
+                    { text: '🌿 Explore the forest', next: 'forest_explore' },
+                    { text: '🔮 Cast a spell', next: 'spell' }
+                ]
+            },
+
+            // ----- CASTLE ENTRANCE -----
+            castle_entrance: {
+                story: `You step into the grand hall. Faint light streams through broken windows. 
+                An old sword rests on a table, and a portrait of a king hangs on the wall. 
+                Suddenly, you hear footsteps from the stairs...`,
+                choices: [
+                    { text: '⚔️ Take the sword', next: 'take_sword' },
+                    { text: '🚶 Head to the stairs', next: 'stairs' },
+                    { text: '🔍 Examine the painting', next: 'painting' }
+                ]
+            },
+
+            // ----- TAKE SWORD -----
+            take_sword: {
+                story: `You grab the sword! A surge of power flows through you. 
+                But suddenly, a warrior spirit emerges from the blade and attacks!`,
+                choices: [
+                    { text: '⚡ Fight the spirit', next: 'fight_ghost' },
+                    { text: '🏃 Run away', next: 'escape' }
+                ],
+                onEnter: () => {
+                    state.inventory.push('Ancient Sword');
+                    state.power += 3;
+                }
+            },
+
+            // ----- FIGHT GHOST -----
+            fight_ghost: {
+                story: `A fierce battle ensues. With your new power, you defeat the spirit 
+                but take a wound. The spirit vanishes, leaving behind a golden key.`,
+                choices: [
+                    { text: '🗝️ Take the key', next: 'take_key' },
+                    { text: '🚪 Go to the next hall', next: 'hall' }
+                ],
+                onEnter: () => {
+                    state.health -= 2; // lose health from battle
+                }
+            },
+
+            // ----- TAKE KEY -----
+            take_key: {
+                story: `You pick up the golden key. Engraved on it: "Treasure Door". 
+                Now you can access the treasure room.`,
+                choices: [
+                    { text: '🚪 Go to the treasure room', next: 'treasure_room' }
+                ],
+                onEnter: () => {
+                    state.inventory.push('Golden Key');
+                }
+            },
+
+            // ----- TREASURE ROOM -----
+            treasure_room: {
+                story: `The treasure room is filled with gold and jewels! But a small dragon guards it. 
+                The dragon seems friendly...`,
+                choices: [
+                    { text: '🤝 Befriend the dragon', next: 'dragon_friend' },
+                    { text: '⚔️ Attack the dragon', next: 'dragon_fight' }
+                ]
+            },
+
+            // ----- DRAGON FRIEND -----
+            dragon_friend: {
+                story: `The dragon becomes your friend and gives you a magical necklace. 
+                You are the hero of the castle! 🎉`,
+                choices: [
+                    { text: '🔄 Play again', next: 'start' }
+                ],
+                onEnter: () => {
+                    state.inventory.push('Magical Necklace');
+                    state.health = 10;
+                    state.power = 10;
+                }
+            },
+
+            // ----- DRAGON FIGHT -----
+            dragon_fight: {
+                story: `The dragon gets angry and attacks! You fight bravely, 
+                but the dragon is stronger... You lose! 😵`,
+                choices: [
+                    { text: '🔄 Try again', next: 'start' }
+                ],
+                onEnter: () => {
+                    state.health = 0; // death
+                }
+            },
+
+            // ----- FOREST EXPLORE -----
+            forest_explore: {
+                story: `In the forest, you find a small cave. Inside, there's a chest. 
+                You hear water dripping from deep within.`,
+                choices: [
+                    { text: '📦 Open the chest', next: 'chest' },
+                    { text: '🚶 Go deeper into the cave', next: 'cave_deep' }
+                ]
+            },
+
+            // ----- CHEST -----
+            chest: {
+                story: `You open the chest. Inside, you find a treasure map and a health potion.`,
+                choices: [
+                    { text: '🧪 Drink the potion', next: 'drink_potion' },
+                    { text: '🗺️ Take the map', next: 'take_map' }
+                ],
+                onEnter: () => {
+                    state.inventory.push('Health Potion');
+                    state.inventory.push('Treasure Map');
+                }
+            },
+
+            // ----- DRINK POTION -----
+            drink_potion: {
+                story: `You drink the potion and feel fully restored!`,
+                choices: [
+                    { text: '🚪 Return to the castle', next: 'castle_entrance' }
+                ],
+                onEnter: () => {
+                    state.health = 10; // full heal
+                }
+            },
+
+            // ----- TAKE MAP -----
+            take_map: {
+                story: `The map shows a treasure buried beneath the castle. 
+                You head back to the castle.`,
+                choices: [
+                    { text: '🚪 Return to the castle', next: 'castle_entrance' }
+                ]
+            },
+
+            // ----- CAVE DEEP -----
+            cave_deep: {
+                story: `You go deeper and reach an underground lake. 
+                A mermaid greets you and gives you a pearl.`,
+                choices: [
+                    { text: '✨ Accept the pearl', next: 'pearl' }
+                ],
+                onEnter: () => {
+                    state.inventory.push('Magic Pearl');
+                }
+            },
+
+            // ----- PEARL -----
+            pearl: {
+                story: `The pearl glows and teleports you to the treasure room! 
+                The dragon respects you and gives you the treasure. You win! 🏆`,
+                choices: [
+                    { text: '🔄 Play again', next: 'start' }
+                ],
+                onEnter: () => {
+                    state.health = 10;
+                    state.power = 10;
+                }
+            },
+
+            // ----- SPELL -----
+            spell: {
+                story: `You chant a spell and a fairy appears! 
+                The fairy grants you three wishes: 
+                1. More power  2. Full health  3. Treasure`,
+                choices: [
+                    { text: '💪 More power', next: 'wish_power' },
+                    { text: '❤️ Full health', next: 'wish_health' },
+                    { text: '💰 Treasure', next: 'wish_treasure' }
+                ]
+            },
+
+            // ----- WISH POWER -----
+            wish_power: {
+                story: `The fairy doubles your power!`,
+                choices: [
+                    { text: '🚪 Go to the castle', next: 'castle_entrance' }
+                ],
+                onEnter: () => {
+                    state.power += 5;
+                }
+            },
+
+            // ----- WISH HEALTH -----
+            wish_health: {
+                story: `The fairy fully restores your health.`,
+                choices: [
+                    { text: '🚪 Go to the castle', next: 'castle_entrance' }
+                ],
+                onEnter: () => {
+                    state.health = 10;
+                }
+            },
+
+            // ----- WISH TREASURE -----
+            wish_treasure: {
+                story: `The fairy gives you a bag of gold. 
+                Now you can buy anything you want!`,
+                choices: [
+                    { text: '🚪 Go to the castle', next: 'castle_entrance' }
+                ],
+                onEnter: () => {
+                    state.inventory.push('Bag of Gold');
+                }
+            },
+
+            // ----- STAIRS -----
+            stairs: {
+                story: `You climb the stairs and find a secret room. 
+                A magical book lies on the table.`,
+                choices: [
+                    { text: '📖 Take the book', next: 'book' },
+                    { text: '🚪 Go back down', next: 'castle_entrance' }
+                ]
+            },
+
+            // ----- BOOK -----
+            book: {
+                story: `You open the book and learn a powerful spell. 
+                Now you can defeat the dragon!`,
+                choices: [
+                    { text: '⚔️ Go to the dragon', next: 'dragon_fight' }
+                ],
+                onEnter: () => {
+                    state.power += 5;
+                    state.inventory.push('Spellbook');
+                }
+            },
+
+            // ----- PAINTING -----
+            painting: {
+                story: `You examine the painting. Behind it, you find a hidden compartment 
+                containing an ancient necklace.`,
+                choices: [
+                    { text: '📿 Take the necklace', next: 'necklace' }
+                ]
+            },
+
+            // ----- NECKLACE -----
+            necklace: {
+                story: `You take the necklace and feel protected. 
+                A secret door opens in the wall.`,
+                choices: [
+                    { text: '🚪 Enter the secret door', next: 'treasure_room' }
+                ],
+                onEnter: () => {
+                    state.inventory.push('Ancient Necklace');
+                    state.health += 2;
+                }
+            },
+
+            // ----- ESCAPE -----
+            escape: {
+                story: `You flee the castle, but you'll always remember this adventure. 
+                Maybe you'll return someday...`,
+                choices: [
+                    { text: '🔄 Start over', next: 'start' }
+                ]
+            },
+
+            // ----- HALL (after ghost fight) -----
+            hall: {
+                story: `You enter the next hall. An empty royal throne and a crown sit on it. 
+                But the dragon leaps out from behind a pillar!`,
+                choices: [
+                    { text: '⚔️ Fight the dragon', next: 'dragon_fight' },
+                    { text: '🏃 Run away', next: 'escape' }
+                ]
+            }
+        };
+
+        // ============================================================
+        //  UI UPDATE FUNCTIONS
+        // ============================================================
+
+        /**
+         * Updates the health, power, and inventory displays.
+         */
+        function updateUI() {
+            document.getElementById('health-display').textContent = state.health;
+            document.getElementById('power-display').textContent = state.power;
+            const invDisplay = state.inventory.length > 0 ? state.inventory.join(', ') : 'Empty';
+            document.getElementById('inventory-display').textContent = invDisplay;
+        }
+
+        /**
+         * Navigates to a given scene by ID.
+         * @param {string} sceneId - The key of the scene in the scenes object.
+         */
+        function goToScene(sceneId) {
+            const scene = scenes[sceneId];
+            if (!scene) {
+                console.error('Scene not found:', sceneId);
+                return;
+            }
+
+            // --- Execute onEnter callback if present ---
+            if (scene.onEnter) {
+                scene.onEnter();
+            }
+
+            // --- Update story text ---
+            document.getElementById('story').innerHTML = scene.story;
+
+            // --- Build choice buttons ---
+            const choicesDiv = document.getElementById('choices');
+            choicesDiv.innerHTML = '';
+            if (scene.choices) {
+                scene.choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = choice.text;
+                    btn.addEventListener('click', () => {
+                        goToScene(choice.next);
+                    });
+                    choicesDiv.appendChild(btn);
+                });
+            }
+
+            // --- Save current scene and update UI ---
+            state.currentScene = sceneId;
+            updateUI();
+
+            // --- Check for Game Over (health <= 0) ---
+            if (state.health <= 0) {
+                document.getElementById('story').innerHTML = '💀 You have died! But the adventure always continues...';
+                choicesDiv.innerHTML = '';
+                const restartBtn = document.createElement('button');
+                restartBtn.className = 'choice-btn';
+                restartBtn.textContent = '🔄 Try again';
+                restartBtn.addEventListener('click', () => {
+                    restartGame();
+                });
+                choicesDiv.appendChild(restartBtn);
+            }
+        }
+
+        /**
+         * Resets the game state and starts from the beginning.
+         */
+        function restartGame() {
+            state = {
+                health: 10,
+                power: 5,
+                inventory: [],
+                currentScene: 'start'
+            };
+            goToScene('start');
+        }
+
+        // ============================================================
+        //  INITIALIZATION
+        // ============================================================
+
+        // --- Attach restart button event ---
+        document.getElementById('restart-btn').addEventListener('click', restartGame);
+
+        // --- Start the game ---
+        goToScene('start');
+    </script>
+</body>
+</html>
