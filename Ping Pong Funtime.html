@@ -1,0 +1,387 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🏓 Pong 2-Player (Touch)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+        body {
+            background: #0a0e17;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+        .game-wrapper {
+            background: #111a22;
+            padding: 15px 15px 20px;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 98%;
+            max-width: 500px;
+        }
+        .scoreboard {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            color: #b0e0ff;
+            font-size: 22px;
+            font-weight: 700;
+            padding: 0 8px 12px 8px;
+            border-bottom: 1px solid #2a3a4a;
+            margin-bottom: 14px;
+        }
+        .scoreboard span {
+            background: #1a2a36;
+            padding: 4px 22px;
+            border-radius: 40px;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.6);
+        }
+        .score-left  { color: #6fcbff; }
+        .score-right { color: #ffb37a; }
+
+        canvas {
+            display: block;
+            background: #0d1620;
+            border-radius: 20px;
+            box-shadow: inset 0 0 40px rgba(0, 20, 40, 0.8);
+            width: 100%;
+            height: auto;
+            aspect-ratio: 800/450;
+            border: 2px solid #2d4055;
+            touch-action: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 14px;
+            color: #8aaac0;
+            font-size: 13px;
+            background: #141f2b;
+            padding: 10px 16px;
+            border-radius: 60px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .controls .touch-hint {
+            color: #6fcbff;
+            font-weight: 600;
+        }
+        .btn-reset {
+            background: #2a3f52;
+            border: none;
+            color: #fff;
+            padding: 4px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #0f1a24;
+            transition: 0.07s;
+            touch-action: manipulation;
+        }
+        .btn-reset:active {
+            transform: translateY(3px);
+            box-shadow: 0 0px 0 #0f1a24;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-wrapper">
+    <div class="scoreboard">
+        <span class="score-left" id="scoreLeft">0</span>
+        <span style="background:transparent; box-shadow:none; color:#4a6a80;">⚡</span>
+        <span class="score-right" id="scoreRight">0</span>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+    <div class="controls">
+        <span>👈 <span class="touch-hint">Left half</span></span>
+        <button class="btn-reset" id="resetBtn">🔄 New Game</button>
+        <span><span class="touch-hint">Right half</span> 👉</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreLeftEl = document.getElementById('scoreLeft');
+        const scoreRightEl = document.getElementById('scoreRight');
+
+        // Game settings
+        const W = 800, H = 450;
+        const PADDLE_WIDTH = 12;
+        const PADDLE_HEIGHT = 80;
+        const BALL_RADIUS = 9;
+        const BALL_SPEED_INIT = 5.5;
+        const SPEED_INCREMENT = 0.4;
+        const WIN_SCORE = 7;
+
+        // Positions
+        let leftPaddleY = H/2 - PADDLE_HEIGHT/2;
+        let rightPaddleY = H/2 - PADDLE_HEIGHT/2;
+        let ballX = W/2, ballY = H/2;
+        let ballSpeedX = BALL_SPEED_INIT * (Math.random() > 0.5 ? 1 : -1);
+        let ballSpeedY = (Math.random() * 2 - 1) * 2.5;
+        let leftScore = 0, rightScore = 0;
+        let gameOver = false;
+        let winner = '';
+
+        // Touch targets
+        let leftTargetY = leftPaddleY;
+        let rightTargetY = rightPaddleY;
+
+        // ----- Helper functions -----
+        function resetBall() {
+            ballX = W/2;
+            ballY = H/2 + (Math.random() * 40 - 20);
+            ballSpeedX = BALL_SPEED_INIT * (Math.random() > 0.5 ? 1 : -1);
+            ballSpeedY = (Math.random() * 2 - 1) * 2.5;
+            if (Math.abs(ballSpeedY) < 0.8) ballSpeedY = 1.2 * (ballSpeedY >= 0 ? 1 : -1);
+        }
+
+        function resetGame() {
+            leftPaddleY = H/2 - PADDLE_HEIGHT/2;
+            rightPaddleY = H/2 - PADDLE_HEIGHT/2;
+            leftTargetY = leftPaddleY;
+            rightTargetY = rightPaddleY;
+            leftScore = 0;
+            rightScore = 0;
+            gameOver = false;
+            winner = '';
+            updateScore();
+            resetBall();
+        }
+
+        function updateScore() {
+            scoreLeftEl.textContent = leftScore;
+            scoreRightEl.textContent = rightScore;
+        }
+
+        // ----- Game logic -----
+        function updateGame() {
+            if (gameOver) return;
+
+            // Smooth paddle movement
+            const SMOOTH = 0.28;
+            leftPaddleY += (leftTargetY - leftPaddleY) * SMOOTH;
+            rightPaddleY += (rightTargetY - rightPaddleY) * SMOOTH;
+
+            // Clamp paddles
+            leftPaddleY = Math.max(0, Math.min(H - PADDLE_HEIGHT, leftPaddleY));
+            rightPaddleY = Math.max(0, Math.min(H - PADDLE_HEIGHT, rightPaddleY));
+
+            // Move ball
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+
+            // Wall collision (top/bottom)
+            if (ballY - BALL_RADIUS < 0 || ballY + BALL_RADIUS > H) {
+                ballSpeedY = -ballSpeedY;
+                ballY = ballY - BALL_RADIUS < 0 ? BALL_RADIUS : H - BALL_RADIUS;
+            }
+
+            // Left paddle collision
+            if (ballSpeedX < 0 &&
+                ballX - BALL_RADIUS < PADDLE_WIDTH &&
+                ballX + BALL_RADIUS > 0 &&
+                ballY > leftPaddleY &&
+                ballY < leftPaddleY + PADDLE_HEIGHT) {
+                
+                ballSpeedX = -ballSpeedX;
+                ballSpeedX += (ballSpeedX > 0 ? SPEED_INCREMENT : -SPEED_INCREMENT);
+                let hitPos = (ballY - (leftPaddleY + PADDLE_HEIGHT/2)) / (PADDLE_HEIGHT/2);
+                ballSpeedY = hitPos * 3.8;
+                ballX = PADDLE_WIDTH + BALL_RADIUS;
+            }
+
+            // Right paddle collision
+            if (ballSpeedX > 0 &&
+                ballX + BALL_RADIUS > W - PADDLE_WIDTH &&
+                ballX - BALL_RADIUS < W &&
+                ballY > rightPaddleY &&
+                ballY < rightPaddleY + PADDLE_HEIGHT) {
+                
+                ballSpeedX = -ballSpeedX;
+                ballSpeedX += (ballSpeedX > 0 ? SPEED_INCREMENT : -SPEED_INCREMENT);
+                let hitPos = (ballY - (rightPaddleY + PADDLE_HEIGHT/2)) / (PADDLE_HEIGHT/2);
+                ballSpeedY = hitPos * 3.8;
+                ballX = W - PADDLE_WIDTH - BALL_RADIUS;
+            }
+
+            // Scoring
+            if (ballX - BALL_RADIUS < -10) {
+                rightScore++;
+                updateScore();
+                if (rightScore >= WIN_SCORE) {
+                    gameOver = true;
+                    winner = 'Right';
+                } else {
+                    resetBall();
+                }
+            } else if (ballX + BALL_RADIUS > W + 10) {
+                leftScore++;
+                updateScore();
+                if (leftScore >= WIN_SCORE) {
+                    gameOver = true;
+                    winner = 'Left';
+                } else {
+                    resetBall();
+                }
+            }
+
+            // Speed limit
+            const MAX_SPEED = 12;
+            if (Math.abs(ballSpeedX) > MAX_SPEED) ballSpeedX = MAX_SPEED * (ballSpeedX > 0 ? 1 : -1);
+            if (Math.abs(ballSpeedY) > MAX_SPEED) ballSpeedY = MAX_SPEED * (ballSpeedY > 0 ? 1 : -1);
+        }
+
+        // ----- Drawing -----
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+
+            // Center line
+            ctx.strokeStyle = '#2a4a66';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([12, 16]);
+            ctx.beginPath();
+            ctx.moveTo(W/2, 0);
+            ctx.lineTo(W/2, H);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Center circle
+            ctx.strokeStyle = '#1f3a50';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(W/2, H/2, 45, 0, Math.PI*2);
+            ctx.stroke();
+
+            // Left paddle
+            ctx.fillStyle = '#6fcbff';
+            ctx.shadowColor = '#6fcbff';
+            ctx.shadowBlur = 16;
+            ctx.fillRect(4, leftPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
+            
+            // Right paddle
+            ctx.fillStyle = '#ffb37a';
+            ctx.shadowColor = '#ffb37a';
+            ctx.shadowBlur = 16;
+            ctx.fillRect(W - PADDLE_WIDTH - 4, rightPaddleY, PADDLE_WIDTH, PADDLE_HEIGHT);
+            
+            ctx.shadowBlur = 0;
+
+            // Ball
+            ctx.fillStyle = '#f0f9ff';
+            ctx.shadowColor = '#b0e0ff';
+            ctx.shadowBlur = 28;
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, BALL_RADIUS, 0, Math.PI*2);
+            ctx.fill();
+
+            // Winner message
+            if (gameOver) {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, H/2 - 45, W, 90);
+                ctx.fillStyle = '#ffd966';
+                ctx.font = 'bold 44px "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#ffb347';
+                ctx.shadowBlur = 30;
+                ctx.fillText(`🏆 Player ${winner} Wins!`, W/2, H/2 + 4);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // ----- Game loop -----
+        function gameLoop() {
+            updateGame();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ----- Touch events (two fingers) -----
+        function handleTouch(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            const touches = e.touches;
+            for (let i = 0; i < touches.length; i++) {
+                const touch = touches[i];
+                const canvasX = (touch.clientX - rect.left) * scaleX;
+                const canvasY = (touch.clientY - rect.top) * scaleY;
+
+                if (canvasX < 0 || canvasX > W || canvasY < 0 || canvasY > H) continue;
+
+                // Left half → left paddle
+                if (canvasX < W/2) {
+                    leftTargetY = canvasY - PADDLE_HEIGHT/2;
+                } 
+                // Right half → right paddle
+                else {
+                    rightTargetY = canvasY - PADDLE_HEIGHT/2;
+                }
+            }
+        }
+
+        // Mouse support (for desktop)
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleY = canvas.height / rect.height;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+            if (mouseY >= 0 && mouseY <= H) {
+                leftTargetY = mouseY - PADDLE_HEIGHT/2;
+            }
+        }
+
+        // ----- Event listeners -----
+        canvas.addEventListener('touchstart', handleTouch, { passive: false });
+        canvas.addEventListener('touchmove', handleTouch, { passive: false });
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('mousemove', handleMouseMove);
+
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
+        document.getElementById('resetBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            resetGame();
+        });
+
+        // Start game
+        resetGame();
+        gameLoop();
+
+        // Prevent scroll
+        document.body.addEventListener('touchmove', (e) => {
+            if (e.target === canvas) e.preventDefault();
+        }, { passive: false });
+
+    })();
+</script>
+</body>
+</html>
