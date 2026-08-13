@@ -1,0 +1,527 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚤 Battle Ships - 2 Player</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 30% 20%, #0f2027, #203a43, #2c5364);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Tahoma', sans-serif;
+            padding: 16px;
+            margin: 0;
+        }
+
+        .game-wrapper {
+            background: rgba(255, 215, 0, 0.12);
+            backdrop-filter: blur(8px);
+            padding: 25px 20px 30px;
+            border-radius: 60px 60px 40px 40px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9), 0 0 0 3px #4a90d9 inset, 0 0 0 6px #1a2a3a inset;
+        }
+
+        .game-container {
+            background: #1a2a3a;
+            padding: 18px 16px 16px;
+            border-radius: 50px 50px 30px 30px;
+            box-shadow: 0 10px 0 #0d1820, 0 20px 40px #000000bb;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.4rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: #4fc3f7;
+            text-shadow: 0 4px 0 #0d47a1, 0 8px 20px #00000099;
+            margin-top: -10px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        h1 span {
+            background: #ffb347;
+            padding: 0 16px;
+            border-radius: 100px;
+            font-size: 1.4rem;
+            color: #1a2a3a;
+            text-shadow: none;
+            box-shadow: 0 4px 0 #7a4f1a;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 18px;
+            margin-bottom: 12px;
+            background: #0d1820;
+            border-radius: 40px;
+            box-shadow: inset 0 2px 10px #00000077;
+        }
+
+        .player-tag {
+            font-size: 1.3rem;
+            font-weight: 700;
+            padding: 6px 20px;
+            border-radius: 30px;
+            transition: 0.2s;
+        }
+
+        .player-tag.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #4fc3f788;
+        }
+
+        .p1-tag {
+            color: #ff6b6b;
+            background: #2a1a1a;
+            border: 2px solid #ff6b6b;
+        }
+
+        .p2-tag {
+            color: #4ecdc4;
+            background: #1a2a2a;
+            border: 2px solid #4ecdc4;
+        }
+
+        .player-tag.active.p1-tag {
+            background: #ff6b6b33;
+            box-shadow: 0 0 30px #ff6b6b66;
+        }
+
+        .player-tag.active.p2-tag {
+            background: #4ecdc433;
+            box-shadow: 0 0 30px #4ecdc466;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            background: #243b4a;
+            padding: 14px;
+            border-radius: 36px;
+            box-shadow: 0 6px 0 #0d1820, 0 12px 28px #000000cc;
+            margin-bottom: 12px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cell {
+            width: 80px;
+            height: 80px;
+            background: #2c4a5a;
+            border-radius: 18px 6px 18px 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 0 5px 0 #0d1820, 0 4px 12px #00000066;
+            transform: scale(1);
+            position: relative;
+        }
+
+        .cell:hover:not(.revealed):not(.game-over) {
+            transform: scale(1.06);
+            filter: brightness(1.2);
+        }
+
+        .cell:active:not(.revealed):not(.game-over) {
+            transform: scale(0.92);
+        }
+
+        .cell.revealed {
+            cursor: default;
+            transform: scale(0.95);
+            filter: brightness(0.9);
+        }
+
+        .cell.revealed.empty {
+            background: #1a2a36;
+            box-shadow: inset 0 0 20px #00000066, 0 3px 0 #0d1820;
+            opacity: 0.4;
+        }
+
+        .cell.revealed.vehicle {
+            animation: revealPop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+        }
+
+        @keyframes revealPop {
+            0% { transform: scale(0.5) rotate(-10deg); }
+            60% { transform: scale(1.3) rotate(5deg); filter: brightness(1.5); }
+            100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+        }
+
+        .cell .extra-chance {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ffd700;
+            color: #1a2a3a;
+            font-size: 0.7rem;
+            font-weight: 900;
+            padding: 2px 8px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px #ffd70088;
+            animation: pulseBadge 0.8s infinite alternate;
+        }
+
+        @keyframes pulseBadge {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.2); }
+        }
+
+        .score-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 18px;
+            background: #0d1820;
+            border-radius: 40px;
+            box-shadow: inset 0 2px 10px #00000077;
+        }
+
+        .score-box {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #4fc3f7;
+            padding: 4px 16px;
+            background: #1a2a3a;
+            border-radius: 30px;
+            box-shadow: inset 0 2px 6px #00000088;
+        }
+
+        .score-box span {
+            color: #ffd700;
+            font-size: 1.5rem;
+        }
+
+        .reset-btn {
+            background: #4fc3f7;
+            border: none;
+            color: #0d1820;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 6px 24px;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #0d47a1, 0 4px 12px #000000aa;
+            transition: 0.06s linear;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reset-btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 1px 0 #0d47a1;
+        }
+        .reset-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            text-shadow: 0 2px 8px #000000dd;
+            min-height: 2rem;
+        }
+
+        .winner-message {
+            color: #ffd700 !important;
+            font-size: 1.5rem !important;
+            text-shadow: 0 0 30px #ffd70088 !important;
+            animation: glowText 1s infinite alternate;
+        }
+
+        @keyframes glowText {
+            0% { text-shadow: 0 0 20px #ffd70066; }
+            100% { text-shadow: 0 0 50px #ffd700cc, 0 0 80px #ffaa00aa; }
+        }
+
+        @media (max-width: 600px) {
+            .cell { width: 55px; height: 55px; font-size: 2rem; border-radius: 12px 4px 12px 4px; }
+            .board { gap: 5px; padding: 10px; }
+            h1 { font-size: 1.6rem; }
+            .player-tag { font-size: 1rem; padding: 4px 12px; }
+            .score-box { font-size: 1rem; }
+            .reset-btn { font-size: 1rem; padding: 4px 16px; }
+        }
+
+        @media (max-width: 420px) {
+            .cell { width: 42px; height: 42px; font-size: 1.4rem; border-radius: 8px 2px 8px 2px; }
+            .board { gap: 4px; padding: 8px; }
+            .game-wrapper { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <div class="game-container">
+        <h1>
+            ⚓ Battle Ships
+            <span>2P</span>
+        </h1>
+
+        <div class="player-info">
+            <div class="player-tag p1-tag active" id="p1Tag">🔴 Player 1</div>
+            <div class="player-tag p2-tag" id="p2Tag">🟢 Player 2</div>
+        </div>
+
+        <div id="board" class="board"></div>
+
+        <div class="score-panel">
+            <div class="score-box">🔴 <span id="p1Score">0</span></div>
+            <div class="score-box">🟢 <span id="p2Score">0</span></div>
+            <button class="reset-btn" id="resetBtn">🔄 New Game</button>
+        </div>
+        <div id="message" class="message">🎯 Player 1 starts! Find the vehicles!</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const ROWS = 6;
+        const COLS = 6;
+        const VEHICLES = {
+            '🚤': 10,
+            '🚗': 20,
+            '✈️': 30,
+            '🚀': 50,
+            '🚲': 5,
+            '🛸': 100
+        };
+        const VEHICLE_KEYS = Object.keys(VEHICLES);
+        const TOTAL_VEHICLES = 10;
+
+        let board = [];
+        let revealed = [];
+        let scores = [0, 0]; // [player1, player2]
+        let currentPlayer = 0; // 0 = Player 1, 1 = Player 2
+        let isGameOver = false;
+        let isProcessing = false;
+        let vehiclesPlaced = 0;
+
+        const boardElement = document.getElementById('board');
+        const p1ScoreSpan = document.getElementById('p1Score');
+        const p2ScoreSpan = document.getElementById('p2Score');
+        const p1Tag = document.getElementById('p1Tag');
+        const p2Tag = document.getElementById('p2Tag');
+        const messageEl = document.getElementById('message');
+
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function createBoard() {
+            const b = [];
+            const r = [];
+            for (let i = 0; i < ROWS; i++) {
+                b.push(new Array(COLS).fill(null));
+                r.push(new Array(COLS).fill(false));
+            }
+            return { board: b, revealed: r };
+        }
+
+        function placeVehicles(board) {
+            let placed = 0;
+            const positions = [];
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    positions.push({ row: r, col: c });
+                }
+            }
+            shuffleArray(positions);
+
+            for (let i = 0; i < Math.min(TOTAL_VEHICLES, positions.length); i++) {
+                const pos = positions[i];
+                const vehicle = VEHICLE_KEYS[Math.floor(Math.random() * VEHICLE_KEYS.length)];
+                board[pos.row][pos.col] = vehicle;
+                placed++;
+            }
+            return placed;
+        }
+
+        function initGame() {
+            const { board: b, revealed: r } = createBoard();
+            board = b;
+            revealed = r;
+            vehiclesPlaced = placeVehicles(board);
+            scores = [0, 0];
+            currentPlayer = 0;
+            isGameOver = false;
+            isProcessing = false;
+            updateUI();
+            renderBoard();
+            updateMessage('🎯 Player 1 starts! Find the vehicles!', false);
+            updatePlayerTags();
+        }
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+
+                    if (revealed[r][c]) {
+                        cell.classList.add('revealed');
+                        if (board[r][c] === null) {
+                            cell.classList.add('empty');
+                            cell.textContent = '·';
+                        } else {
+                            cell.classList.add('vehicle');
+                            cell.textContent = board[r][c];
+                            // Show extra chance badge
+                            const badge = document.createElement('span');
+                            badge.className = 'extra-chance';
+                            badge.textContent = '🔄+1';
+                            cell.appendChild(badge);
+                        }
+                    } else {
+                        cell.textContent = '?';
+                        cell.addEventListener('click', () => onCellClick(r, c));
+                    }
+
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        function onCellClick(row, col) {
+            if (isProcessing) return;
+            if (isGameOver) return;
+            if (revealed[row][col]) return;
+
+            isProcessing = true;
+
+            // Reveal cell
+            revealed[row][col] = true;
+            const value = board[row][col];
+            let extraChance = false;
+
+            if (value !== null) {
+                // Vehicle found!
+                const points = VEHICLES[value] || 10;
+                scores[currentPlayer] += points;
+                extraChance = true;
+                updateMessage(`🎉 Player ${currentPlayer + 1} found ${value}! +${points} pts! Extra turn! 🎉`, false);
+            } else {
+                // Empty
+                updateMessage(`😅 Player ${currentPlayer + 1} found nothing! Turn passes.`, false);
+                // Switch player
+                currentPlayer = (currentPlayer + 1) % 2;
+            }
+
+            renderBoard();
+            updateUI();
+            updatePlayerTags();
+
+            // Check if all vehicles found
+            let totalRevealed = 0;
+            let totalVehiclesFound = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (revealed[r][c]) {
+                        totalRevealed++;
+                        if (board[r][c] !== null) totalVehiclesFound++;
+                    }
+                }
+            }
+
+            if (totalVehiclesFound === vehiclesPlaced) {
+                isGameOver = true;
+                let winner = '';
+                if (scores[0] > scores[1]) winner = '🏆 Player 1 WINS! 🏆';
+                else if (scores[1] > scores[0]) winner = '🏆 Player 2 WINS! 🏆';
+                else winner = "🤝 It's a TIE! 🤝";
+                updateMessage(`🎊 ALL VEHICLES FOUND! ${winner} 🎊`, true);
+                renderBoard();
+                isProcessing = false;
+                return;
+            }
+
+            // If extra chance, keep same player
+            if (!extraChance) {
+                // Already switched above
+            } else {
+                // Keep same player
+                // But don't switch
+            }
+
+            // Update message if game continues
+            if (!isGameOver) {
+                if (extraChance) {
+                    updateMessage(`🔄 Player ${currentPlayer + 1} gets another turn!`, false);
+                } else {
+                    updateMessage(`🎯 Player ${currentPlayer + 1}'s turn!`, false);
+                }
+            }
+
+            setTimeout(() => {
+                isProcessing = false;
+            }, 300);
+        }
+
+        function updateUI() {
+            p1ScoreSpan.textContent = scores[0];
+            p2ScoreSpan.textContent = scores[1];
+        }
+
+        function updatePlayerTags() {
+            p1Tag.classList.toggle('active', currentPlayer === 0 && !isGameOver);
+            p2Tag.classList.toggle('active', currentPlayer === 1 && !isGameOver);
+        }
+
+        function updateMessage(text, isWinner) {
+            messageEl.textContent = text;
+            if (isWinner) {
+                messageEl.className = 'message winner-message';
+            } else {
+                messageEl.className = 'message';
+            }
+        }
+
+        function resetGame() {
+            if (isProcessing) return;
+            initGame();
+        }
+
+        // Init
+        function init() {
+            initGame();
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+        }
+
+        init();
+    })();
+</script>
+</body>
+</html>
