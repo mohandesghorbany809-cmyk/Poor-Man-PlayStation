@@ -1,0 +1,514 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Dart Game Pro</title>
+    <style>
+        /* ---------- RESET & GLOBAL ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0b1a2e, #0a111f);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 16px;
+            margin: 0;
+        }
+
+        /* ---------- GAME WRAPPER ---------- */
+        .game-wrapper {
+            background: rgba(10, 20, 35, 0.7);
+            backdrop-filter: blur(4px);
+            border-radius: 56px;
+            padding: 28px 32px 38px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 210, 0, 0.2);
+            transition: all 0.2s;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        /* ---------- DARTBOARD ---------- */
+        .board-container {
+            position: relative;
+            width: 380px;
+            height: 380px;
+            margin: 0 auto;
+        }
+
+        canvas#dartboard {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 50%;
+            box-shadow: 0 0 0 8px #1f2a3a, 0 0 0 12px #b8860b, 0 20px 40px rgba(0,0,0,0.8);
+            cursor: crosshair;
+            transition: filter 0.15s;
+            background: #1e2b3c;
+        }
+
+        canvas#dartboard:active {
+            filter: brightness(0.9);
+        }
+
+        /* ---------- INFO PANEL ---------- */
+        .info-panel {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 24px 40px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 16px 28px;
+            border-radius: 60px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 200, 50, 0.25);
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+        }
+
+        .score-box {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            color: #f5e7c8;
+            text-shadow: 0 2px 3px black;
+        }
+
+        .score-box span:first-child {
+            font-size: 1.1rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #b9ad8a;
+        }
+
+        .score-box .value {
+            font-size: 2.6rem;
+            font-weight: 700;
+            color: #fadf8a;
+            background: rgba(0,0,0,0.3);
+            padding: 0 14px;
+            border-radius: 30px;
+            line-height: 1.4;
+            min-width: 70px;
+            text-align: center;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .action-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* ---------- BUTTONS ---------- */
+        .btn {
+            background: linear-gradient(145deg, #2e3d4f, #1a2633);
+            border: none;
+            color: #efe6d2;
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 10px 22px;
+            border-radius: 40px;
+            box-shadow: 0 6px 0 #0b111a, 0 8px 18px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: all 0.08s ease;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 2px 0 #0b111a;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #f5b82e, #d18d0b);
+            color: #0d1b2a;
+            box-shadow: 0 6px 0 #7a4f00, 0 8px 18px rgba(0,0,0,0.6);
+            border-color: #ffd966;
+            font-weight: 700;
+        }
+
+        .btn-primary:active {
+            background: #d69d1a;
+        }
+
+        .btn-danger {
+            background: linear-gradient(145deg, #a53f3f, #712828);
+            box-shadow: 0 6px 0 #401616;
+            border-color: #b15353;
+        }
+
+        /* ---------- FEEDBACK ---------- */
+        .feedback {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #d4c8ad;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 28px;
+            border-radius: 40px;
+            min-height: 3.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #4d5b47;
+            text-shadow: 0 2px 3px black;
+            min-width: 160px;
+            backdrop-filter: blur(2px);
+        }
+
+        /* ---------- THROW INDICATOR ---------- */
+        .throw-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #eae0c0;
+        }
+
+        .throw-dot {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a5b4a;
+            box-shadow: inset 0 0 0 2px #1a261a;
+            transition: 0.1s;
+        }
+
+        .throw-dot.active {
+            background: #f5c542;
+            box-shadow: 0 0 14px #f5b81e, inset 0 0 0 2px #9e7a1a;
+        }
+
+        /* ---------- RESPONSIVE ---------- */
+        @media (max-width: 480px) {
+            .game-wrapper { padding: 16px; }
+            .board-container { width: 300px; height: 300px; }
+            .info-panel { flex-direction: column; gap: 12px; align-items: stretch; }
+            .score-box { justify-content: center; }
+            .feedback { min-height: 2.8rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <div class="container">
+        <!-- DARTBOARD -->
+        <div class="board-container">
+            <canvas id="dartboard" width="600" height="600"></canvas>
+        </div>
+
+        <!-- INFO PANEL -->
+        <div class="info-panel">
+            <div class="score-box">
+                <span>🎯 Score</span>
+                <span class="value" id="scoreDisplay">0</span>
+            </div>
+            <div class="throw-indicator">
+                <span>Throw</span>
+                <span class="throw-dot" id="dot1"></span>
+                <span class="throw-dot" id="dot2"></span>
+                <span class="throw-dot" id="dot3"></span>
+            </div>
+            <div class="action-group">
+                <button class="btn btn-primary" id="resetBtn">🔄 New Game</button>
+                <button class="btn btn-danger" id="undoBtn">↩️ Undo</button>
+            </div>
+        </div>
+
+        <!-- FEEDBACK MESSAGE -->
+        <div class="feedback" id="feedbackMessage">💪 Take a shot!</div>
+    </div>
+</div>
+<script>
+    (function(){
+        // ---------- CANVAS SETUP ----------
+        const canvas = document.getElementById('dartboard');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const feedback = document.getElementById('feedbackMessage');
+
+        const dot1 = document.getElementById('dot1');
+        const dot2 = document.getElementById('dot2');
+        const dot3 = document.getElementById('dot3');
+        const dots = [dot1, dot2, dot3];
+
+        // ---------- GAME STATE ----------
+        let score = 0;                  // Current total score
+        let throws = [];               // Array of each throw score (max 3)
+        const MAX_THROWS = 3;
+        // currentRound = throws.length (0,1,2)
+
+        // ---------- BOARD DATA (normalized 0..1) ----------
+        const SEGMENTS = 20;
+        const ANGLE_STEP = (2 * Math.PI) / SEGMENTS;
+        // Scores for each segment (clockwise from top: 20,1,18,4,...)
+        const SEGMENT_SCORES = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+        const START_ANGLE = -Math.PI / 2; // 12 o'clock
+
+        // Radius ratios (relative to 1)
+        const R_OUTER_BULL = 0.10;    // outer bull (25)
+        const R_INNER_BULL = 0.045;   // inner bull (50)
+        const R_SINGLE_INNER = 0.25;  // inner single ring
+        const R_TRIPLE = 0.36;        // triple ring
+        const R_SINGLE_OUTER = 0.45;  // outer single ring
+        const R_DOUBLE = 0.58;        // double ring
+        const R_OUTER_EDGE = 0.62;    // board edge
+
+        // ---------- HELPER: polar to canvas coords ----------
+        function polarToXY(angle, radius) {
+            return {
+                x: 0.5 + radius * Math.cos(angle),
+                y: 0.5 + radius * Math.sin(angle)
+            };
+        }
+
+        // ---------- DRAW THE DARTBOARD ----------
+        function drawBoard() {
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Background gradient
+            const grad = ctx.createRadialGradient(300, 300, 20, 300, 300, 340);
+            grad.addColorStop(0, '#19322e');
+            grad.addColorStop(0.7, '#11221f');
+            grad.addColorStop(1, '#0a1412');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            // Draw each segment (rings + wedges)
+            for (let i = 0; i < SEGMENTS; i++) {
+                const angle1 = START_ANGLE + i * ANGLE_STEP;
+                const angle2 = angle1 + ANGLE_STEP;
+                const score = SEGMENT_SCORES[i];
+
+                // Alternate colors: black / beige
+                const isBlack = (i % 2 === 0);
+                const baseColor = isBlack ? '#1e1a1a' : '#e8d6b0';
+                const darkColor = isBlack ? '#0d0b0b' : '#b89f7a';
+
+                // Helper to draw one ring segment
+                function drawSegment(innerR, outerR, color1, color2) {
+                    ctx.beginPath();
+                    const p1 = polarToXY(angle1, innerR);
+                    const p2 = polarToXY(angle2, innerR);
+                    const p3 = polarToXY(angle2, outerR);
+                    const p4 = polarToXY(angle1, outerR);
+                    ctx.moveTo(p1.x * w, p1.y * h);
+                    ctx.lineTo(p2.x * w, p2.y * h);
+                    ctx.lineTo(p3.x * w, p3.y * h);
+                    ctx.lineTo(p4.x * w, p4.y * h);
+                    ctx.closePath();
+                    const grd = ctx.createLinearGradient(0,0,w*0.3,h*0.7);
+                    grd.addColorStop(0, color1);
+                    grd.addColorStop(1, color2);
+                    ctx.fillStyle = grd;
+                    ctx.fill();
+                    ctx.strokeStyle = '#1a1a1a';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                }
+
+                // Draw rings from outside to inside
+                drawSegment(R_DOUBLE, R_OUTER_EDGE, baseColor, darkColor);   // Double
+                drawSegment(R_SINGLE_OUTER, R_DOUBLE, baseColor, darkColor);  // Outer single
+                drawSegment(R_TRIPLE, R_SINGLE_OUTER, baseColor, darkColor);  // Triple
+                drawSegment(R_OUTER_BULL, R_TRIPLE, baseColor, darkColor);    // Inner single
+            }
+
+            // ---------- BULLSEYE ----------
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 16;
+            // Outer bull (25)
+            ctx.beginPath();
+            ctx.arc(w/2, h/2, R_OUTER_BULL * w, 0, 2*Math.PI);
+            ctx.fillStyle = '#c99b3b';
+            ctx.shadowColor = '#b8860b';
+            ctx.shadowBlur = 20;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#6a4d1a';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Inner bull (50)
+            ctx.beginPath();
+            ctx.arc(w/2, h/2, R_INNER_BULL * w, 0, 2*Math.PI);
+            ctx.fillStyle = '#d43f3f';
+            ctx.shadowColor = '#b30000';
+            ctx.shadowBlur = 24;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#6d1a1a';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // ---------- SEGMENT DIVIDERS ----------
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#846f4a';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < SEGMENTS; i++) {
+                const angle = START_ANGLE + i * ANGLE_STEP;
+                const p1 = polarToXY(angle, R_OUTER_EDGE);
+                const p2 = polarToXY(angle, R_OUTER_BULL);
+                ctx.beginPath();
+                ctx.moveTo(p1.x * w, p1.y * h);
+                ctx.lineTo(p2.x * w, p2.y * h);
+                ctx.stroke();
+            }
+        }
+
+        // ---------- CALCULATE SCORE FROM MOUSE POSITION ----------
+        function getScoreFromPoint(clickX, clickY) {
+            const w = canvas.width, h = canvas.height;
+            const cx = w/2, cy = h/2;
+            const dx = clickX - cx, dy = clickY - cy;
+            const dist = Math.sqrt(dx*dx + dy*dy) / (w/2); // 0..1
+
+            // Outside board
+            if (dist > R_OUTER_EDGE) return 0;
+
+            // Calculate angle (relative to 12 o'clock)
+            let angle = Math.atan2(dy, dx);
+            if (angle < -Math.PI/2) angle += 2*Math.PI;
+            let angleNorm = (angle - START_ANGLE + 2*Math.PI) % (2*Math.PI);
+            let segIndex = Math.floor(angleNorm / ANGLE_STEP);
+            if (segIndex >= SEGMENTS) segIndex = SEGMENTS-1;
+            const baseScore = SEGMENT_SCORES[segIndex];
+
+            // Determine ring multiplier
+            let multiplier = 1;
+            if (dist >= R_DOUBLE && dist < R_OUTER_EDGE) multiplier = 2;      // Double
+            else if (dist >= R_TRIPLE && dist < R_SINGLE_OUTER) multiplier = 3; // Triple
+            else if (dist >= R_SINGLE_OUTER && dist < R_DOUBLE) multiplier = 1;
+            else if (dist >= R_OUTER_BULL && dist < R_TRIPLE) multiplier = 1;
+            else if (dist < R_INNER_BULL) return 50;   // Inner bullseye
+            else if (dist < R_OUTER_BULL) return 25;   // Outer bullseye
+
+            return baseScore * multiplier;
+        }
+
+        // ---------- UPDATE UI ----------
+        function updateUI() {
+            scoreDisplay.textContent = score;
+            // Update throw indicator dots
+            for (let i = 0; i < MAX_THROWS; i++) {
+                if (i < throws.length) {
+                    dots[i].classList.add('active');
+                } else {
+                    dots[i].classList.remove('active');
+                }
+            }
+            // Feedback messages
+            if (score >= 100) {
+                feedback.innerHTML = '🎉 You win! 🎉 Play again';
+            } else if (throws.length === MAX_THROWS && score < 100) {
+                feedback.innerHTML = '😬 Round over! Score: ' + score + ' -- Try again';
+            } else {
+                feedback.innerHTML = '🎯 Throw to reach 100!';
+            }
+        }
+
+        // ---------- HANDLE A THROW ----------
+        function handleThrow(clickX, clickY) {
+            if (throws.length >= MAX_THROWS) {
+                feedback.innerHTML = '⛔ Round is over! Reset.';
+                return;
+            }
+            if (score >= 100) {
+                feedback.innerHTML = '🏆 Already won! Reset.';
+                return;
+            }
+
+            const earned = getScoreFromPoint(clickX, clickY);
+            if (earned === 0) {
+                feedback.innerHTML = '💨 Missed! Try again';
+                return;
+            }
+
+            // Add throw
+            throws.push(earned);
+            score += earned;
+            updateUI();
+
+            // Fancy feedback
+            if (earned === 50) feedback.innerHTML = '🎯 BULLSEYE! 50 points';
+            else if (earned === 25) feedback.innerHTML = '🎯 25 points';
+            else if (earned >= 40) feedback.innerHTML = '🔥 Awesome! ' + earned + ' pts';
+            else if (earned >= 20) feedback.innerHTML = '👍 Nice! ' + earned + ' pts';
+            else feedback.innerHTML = '🎯 ' + earned + ' pts';
+
+            // Check win condition
+            if (score >= 100) {
+                feedback.innerHTML = '🎉🎉 YOU WIN! 🎉🎉';
+            } else if (throws.length === MAX_THROWS) {
+                feedback.innerHTML = '⏳ Round over! Total: ' + score;
+            }
+        }
+
+        // ---------- RESET GAME ----------
+        function resetGame() {
+            score = 0;
+            throws = [];
+            updateUI();
+            feedback.innerHTML = '🔄 New game! Throw';
+            drawBoard();
+        }
+
+        // ---------- UNDO LAST THROW ----------
+        function undoThrow() {
+            if (throws.length === 0) {
+                feedback.innerHTML = '⚠️ Nothing to undo';
+                return;
+            }
+            const last = throws.pop();
+            score -= last;
+            updateUI();
+            feedback.innerHTML = '↩️ Undid ' + last + ' pts';
+            drawBoard();
+        }
+
+        // ---------- EVENT: CLICK ON CANVAS ----------
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            handleThrow(x, y);
+        });
+
+        // ---------- BUTTON LISTENERS ----------
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
+        document.getElementById('undoBtn').addEventListener('click', undoThrow);
+
+        // ---------- INIT ----------
+        drawBoard();
+        resetGame();
+        updateUI();
+
+        // Redraw on resize
+        window.addEventListener('resize', drawBoard);
+    })();
+</script>
+</body>
+</html>
