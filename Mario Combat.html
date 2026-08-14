@@ -1,0 +1,996 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8" />
+    <title>سوپر ماریو - نسخهٔ افسانه‌ای</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        .game-wrapper {
+            background: linear-gradient(145deg, #1a2a6c, #b21f1f, #fdbb2d);
+            padding: 25px;
+            border-radius: 30px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), inset 0 0 30px rgba(255, 215, 0, 0.3);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            transform: scale(0.98);
+            transition: 0.2s;
+        }
+        .game-wrapper:hover {
+            transform: scale(1);
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 20px;
+            background: #87CEEB;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.6);
+            border: 3px solid #f1c40f;
+            image-rendering: pixelated;
+        }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 3px 3px 0 #000;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 14px 25px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #ffd700;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .info div {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .controls {
+            color: #ffd700;
+            font-size: 15px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .controls span {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 30px;
+            border: 1px solid #ffd700;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        #status {
+            color: #2ecc71;
+            font-size: 22px;
+            text-shadow: 0 0 20px #2ecc71;
+        }
+        #distanceDisplay {
+            color: #f39c12;
+        }
+        #enemyCount {
+            color: #e74c3c;
+        }
+        #scoreDisplay {
+            color: #f1c40f;
+        }
+        .emoji-big {
+            font-size: 28px;
+            filter: drop-shadow(0 0 10px gold);
+        }
+        @media (max-width: 700px) {
+            .game-wrapper {
+                padding: 10px;
+            }
+            .info {
+                font-size: 14px;
+                padding: 10px 15px;
+            }
+            .controls span {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <canvas id="gameCanvas" width="1000" height="500"></canvas>
+        <div class="info">
+            <div><span class="emoji-big">⭐</span> امتیاز: <span id="scoreDisplay">0</span></div>
+            <div><span class="emoji-big">🏃</span> مسافت: <span id="distanceDisplay">0</span>m</div>
+            <div><span class="emoji-big">👾</span> دشمنان: <span id="enemyCount">0</span></div>
+            <div class="controls">
+                <span>← ↑ →</span>
+                <span>پرش: Space</span>
+            </div>
+            <div id="status">▶ در حال بازی</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const distanceSpan = document.getElementById('distanceDisplay');
+        const enemyCountSpan = document.getElementById('enemyCount');
+        const statusDiv = document.getElementById('status');
+
+        // ======== تنظیمات ========
+        const GRAVITY = 0.6;
+        const JUMP_FORCE = -14;
+        const MOVE_SPEED = 6;
+        const WORLD_WIDTH = 12000;
+        const WIN_DISTANCE = 10000;
+
+        // ======== دوربین ========
+        let cameraX = 0;
+
+        // ======== ماریو ========
+        const mario = {
+            x: 150,
+            y: 350,
+            w: 36,
+            h: 46,
+            vy: 0,
+            onGround: false,
+            facing: 1,
+            frame: 0,
+            animTimer: 0
+        };
+
+        // ======== آرایه‌ها ========
+        let coins = [];
+        let enemies = [];
+        let platforms = [];
+        let particles = [];
+        let distance = 0;
+        let starField = [];
+
+        // ======== متغیرهای بازی ========
+        let score = 0;
+        let gameOver = false;
+        let win = false;
+        let keys = {};
+        let frameCount = 0;
+        let maxEnemies = 7;
+        let comboCount = 0;
+        let screenShake = 0;
+
+        // ======== ستاره‌های پس‌زمینه ========
+        for (let i = 0; i < 100; i++) {
+            starField.push({
+                x: Math.random() * WORLD_WIDTH,
+                y: Math.random() * 300,
+                size: Math.random() * 3 + 1,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+
+        // ======== ساخت سطح فوق‌العاده ========
+        function buildLevel() {
+            platforms = [];
+            coins = [];
+            enemies = [];
+            particles = [];
+            distance = 0;
+            score = 0;
+            gameOver = false;
+            win = false;
+            cameraX = 0;
+            frameCount = 0;
+            comboCount = 0;
+            mario.x = 150;
+            mario.y = 350;
+            mario.vy = 0;
+            mario.onGround = false;
+            statusDiv.textContent = '▶ در حال بازی';
+            statusDiv.style.color = '#2ecc71';
+
+            // ===== طراحی مسیر حماسی =====
+            // بخش ۱: شروع
+            platforms.push({ x: 0, y: 440, w: 700, h: 60 });
+
+            // سکوهای اولیه با چالش
+            platforms.push({ x: 800, y: 380, w: 130, h: 20 });
+            platforms.push({ x: 980, y: 300, w: 130, h: 20 });
+            platforms.push({ x: 1160, y: 440, w: 450, h: 60 });
+
+            // منطقه پرش‌های سری
+            platforms.push({ x: 1660, y: 370, w: 100, h: 20 });
+            platforms.push({ x: 1820, y: 290, w: 100, h: 20 });
+            platforms.push({ x: 1980, y: 370, w: 100, h: 20 });
+            platforms.push({ x: 2140, y: 440, w: 400, h: 60 });
+
+            // سکوهای متحرک‌نما
+            platforms.push({ x: 2600, y: 330, w: 160, h: 20 });
+            platforms.push({ x: 2820, y: 260, w: 160, h: 20 });
+            platforms.push({ x: 3040, y: 330, w: 160, h: 20 });
+            platforms.push({ x: 3260, y: 440, w: 350, h: 60 });
+
+            // بخش پرپیچ‌وخم
+            platforms.push({ x: 3680, y: 370, w: 120, h: 20 });
+            platforms.push({ x: 3860, y: 290, w: 120, h: 20 });
+            platforms.push({ x: 4040, y: 370, w: 120, h: 20 });
+            platforms.push({ x: 4220, y: 440, w: 500, h: 60 });
+
+            // بخش پایانی
+            platforms.push({ x: 4800, y: 350, w: 140, h: 20 });
+            platforms.push({ x: 5000, y: 270, w: 140, h: 20 });
+            platforms.push({ x: 5200, y: 350, w: 140, h: 20 });
+            platforms.push({ x: 5400, y: 440, w: 400, h: 60 });
+
+            // سکوهای نهایی
+            platforms.push({ x: 5900, y: 380, w: 130, h: 20 });
+            platforms.push({ x: 6100, y: 300, w: 130, h: 20 });
+            platforms.push({ x: 6300, y: 440, w: 450, h: 60 });
+
+            // منطقه آخر
+            platforms.push({ x: 6850, y: 370, w: 120, h: 20 });
+            platforms.push({ x: 7050, y: 290, w: 120, h: 20 });
+            platforms.push({ x: 7250, y: 370, w: 120, h: 20 });
+            platforms.push({ x: 7450, y: 440, w: 400, h: 60 });
+
+            // سکوی طلایی پایان
+            platforms.push({ x: 8000, y: 420, w: 2000, h: 80 });
+            platforms.push({ x: 10200, y: 380, w: 1800, h: 120 });
+
+            // ===== سکه‌های فراوان (۷۰ سکه) =====
+            const coinPositions = [
+                [820, 350],
+                [870, 350],
+                [1000, 270],
+                [1050, 270],
+                [1250, 410],
+                [1300, 410],
+                [1350, 410],
+                [1680, 340],
+                [1730, 340],
+                [1840, 260],
+                [1890, 260],
+                [2000, 340],
+                [2050, 340],
+                [2220, 410],
+                [2270, 410],
+                [2320, 410],
+                [2620, 300],
+                [2690, 300],
+                [2840, 230],
+                [2910, 230],
+                [3060, 300],
+                [3130, 300],
+                [3320, 410],
+                [3370, 410],
+                [3420, 410],
+                [3700, 340],
+                [3760, 340],
+                [3880, 260],
+                [3940, 260],
+                [4060, 340],
+                [4120, 340],
+                [4300, 410],
+                [4350, 410],
+                [4400, 410],
+                [4820, 320],
+                [4880, 320],
+                [5020, 240],
+                [5080, 240],
+                [5220, 320],
+                [5280, 320],
+                [5480, 410],
+                [5530, 410],
+                [5580, 410],
+                [5920, 350],
+                [5980, 350],
+                [6120, 270],
+                [6180, 270],
+                [6360, 410],
+                [6410, 410],
+                [6460, 410],
+                [6870, 340],
+                [6930, 340],
+                [7070, 260],
+                [7130, 260],
+                [7270, 340],
+                [7330, 340],
+                [7510, 410],
+                [7560, 410],
+                [7610, 410],
+                [8100, 390],
+                [8200, 390],
+                [8300, 390],
+                [8400, 390],
+                [8500, 390],
+                [8600, 390],
+                [8700, 390],
+                [8800, 390],
+                [8900, 390],
+                [10300, 350],
+                [10400, 350],
+                [10500, 350],
+                [10600, 350],
+                [10700, 350],
+                [10800, 350],
+                [10900, 350],
+                [11000, 350],
+            ];
+
+            for (let pos of coinPositions) {
+                coins.push({
+                    x: pos[0],
+                    y: pos[1],
+                    w: 20,
+                    h: 20,
+                    collected: false,
+                    glow: Math.random() * Math.PI * 2
+                });
+            }
+
+            // ===== دشمنان جدید با گرافیک پیشرفته (۱۲ دشمن) =====
+            const enemyData = [
+                { x: 500, y: 410, vx: -1.8 },
+                { x: 1200, y: 410, vx: -2.0 },
+                { x: 1700, y: 340, vx: -1.5 },
+                { x: 2200, y: 410, vx: -2.2 },
+                { x: 2700, y: 300, vx: -1.7 },
+                { x: 3300, y: 410, vx: -2.4 },
+                { x: 3750, y: 340, vx: -1.6 },
+                { x: 4300, y: 410, vx: -2.1 },
+                { x: 4850, y: 320, vx: -1.9 },
+                { x: 5450, y: 410, vx: -2.3 },
+                { x: 6000, y: 350, vx: -1.4 },
+                { x: 6900, y: 340, vx: -1.8 },
+                { x: 7500, y: 410, vx: -2.0 },
+                { x: 8200, y: 390, vx: -1.6 },
+            ];
+
+            for (let e of enemyData) {
+                enemies.push({
+                    x: e.x,
+                    y: e.y - 40,
+                    w: 34,
+                    h: 40,
+                    vx: e.vx,
+                    alive: true,
+                    phase: Math.random() * Math.PI * 2,
+                    eyeBlink: 0
+                });
+            }
+
+            updateScore();
+            updateDistance();
+            updateEnemyCount();
+        }
+
+        // ======== برخورد مستطیلی ========
+        function rectCollide(r1, r2) {
+            return r1.x < r2.x + r2.w &&
+                r1.x + r1.w > r2.x &&
+                r1.y < r2.y + r2.h &&
+                r1.y + r1.h > r2.y;
+        }
+
+        // ======== به‌روزرسانی ========
+        function updateScore() {
+            scoreSpan.textContent = score;
+        }
+
+        function updateDistance() {
+            distanceSpan.textContent = Math.floor(distance);
+        }
+
+        function updateEnemyCount() {
+            const alive = enemies.filter(e => e.alive).length;
+            enemyCountSpan.textContent = alive;
+        }
+
+        // ======== ذرات ========
+        function spawnParticles(x, y, color, count = 20) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10 - 3,
+                    life: 1,
+                    decay: 0.01 + Math.random() * 0.02,
+                    size: 4 + Math.random() * 6,
+                    color: color
+                });
+            }
+        }
+
+        // ======== حلقهٔ اصلی ========
+        function update() {
+            if (gameOver || win) return;
+
+            frameCount++;
+
+            // ===== حرکت ماریو =====
+            let moveX = 0;
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                moveX = -MOVE_SPEED;
+                mario.facing = -1;
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                moveX = MOVE_SPEED;
+                mario.facing = 1;
+            }
+
+            mario.x += moveX;
+
+            // انیمیشن
+            if (moveX !== 0 && mario.onGround) {
+                mario.animTimer++;
+                if (mario.animTimer % 6 === 0) {
+                    mario.frame = (mario.frame + 1) % 4;
+                }
+            } else if (mario.onGround) {
+                mario.frame = 0;
+            }
+
+            // ===== پرش =====
+            if ((keys['Space'] || keys['ArrowUp'] || keys['w'] || keys['W']) && mario.onGround) {
+                mario.vy = JUMP_FORCE;
+                mario.onGround = false;
+                spawnParticles(mario.x + mario.w / 2, mario.y + mario.h, '#87CEEB', 8);
+            }
+
+            // ===== جاذبه =====
+            mario.vy += GRAVITY;
+            mario.y += mario.vy;
+
+            // ===== برخورد با سکوها =====
+            mario.onGround = false;
+            for (let p of platforms) {
+                if (rectCollide(mario, p)) {
+                    if (mario.vy >= 0 && mario.y + mario.h - mario.vy <= p.y + 8) {
+                        mario.y = p.y - mario.h;
+                        mario.vy = 0;
+                        mario.onGround = true;
+                    } else if (mario.vy < 0 && mario.y <= p.y + p.h) {
+                        mario.y = p.y + p.h;
+                        mario.vy = 0;
+                    }
+                }
+            }
+
+            // ===== محدودیت =====
+            if (mario.x < 0) mario.x = 0;
+            if (mario.x + mario.w > WORLD_WIDTH) mario.x = WORLD_WIDTH - mario.w;
+
+            // ===== مسافت =====
+            if (mario.x > distance) {
+                distance = mario.x;
+                updateDistance();
+
+                // پاداش مسافت
+                if (Math.floor(distance) % 100 === 0 && distance > 0) {
+                    score += 5;
+                    updateScore();
+                    spawnParticles(mario.x, mario.y - 20, '#f1c40f', 12);
+                }
+            }
+
+            // ===== سقوط =====
+            if (mario.y > canvas.height + 100) {
+                gameOver = true;
+                statusDiv.textContent = '💀 سقوط کردی!';
+                statusDiv.style.color = '#e74c3c';
+                return;
+            }
+
+            // ===== جمع‌آوری سکه =====
+            for (let c of coins) {
+                if (!c.collected && rectCollide(mario, c)) {
+                    c.collected = true;
+                    score += 15;
+                    comboCount++;
+                    if (comboCount % 5 === 0) score += 20;
+                    updateScore();
+                    spawnParticles(c.x + c.w / 2, c.y + c.h / 2, '#FFD700', 25);
+                }
+            }
+
+            // ===== حرکت دشمنان =====
+            for (let e of enemies) {
+                if (!e.alive) continue;
+                e.x += e.vx;
+                e.phase += 0.05;
+                e.eyeBlink += 0.01;
+
+                // برخورد با سکو
+                for (let p of platforms) {
+                    if (rectCollide(e, p)) {
+                        if (e.vx < 0) e.x = p.x + p.w;
+                        else e.x = p.x - e.w;
+                        e.vx *= -1;
+                        break;
+                    }
+                }
+
+                // حذف اگه دور شد
+                if (e.x < -200 || e.x > WORLD_WIDTH + 200) {
+                    e.alive = false;
+                    updateEnemyCount();
+                    continue;
+                }
+
+                // برخورد با ماریو
+                if (e.alive && rectCollide(mario, e)) {
+                    if (mario.vy > 0 && mario.y + mario.h - mario.vy <= e.y + 12) {
+                        e.alive = false;
+                        mario.vy = -10;
+                        score += 30;
+                        comboCount += 2;
+                        updateScore();
+                        updateEnemyCount();
+                        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#e74c3c', 30);
+                        screenShake = 8;
+                    } else {
+                        gameOver = true;
+                        statusDiv.textContent = '💀 خوردی به دشمن!';
+                        statusDiv.style.color = '#e74c3c';
+                        return;
+                    }
+                }
+            }
+
+            // پاکسازی
+            enemies = enemies.filter(e => e.alive);
+            updateEnemyCount();
+
+            // ===== شرط برد (مسافت ۱۰۰۰۰ متر) =====
+            if (distance >= WIN_DISTANCE) {
+                win = true;
+                statusDiv.textContent = '🏆 قهرمان! ۱۰۰۰۰ متر رو فتح کردی! 🌟';
+                statusDiv.style.color = '#f1c40f';
+                // انفجار شادی
+                for (let i = 0; i < 50; i++) {
+                    setTimeout(() => {
+                        spawnParticles(
+                            mario.x + Math.random() * 200 - 100,
+                            mario.y + Math.random() * 100 - 50,
+                            ['#FFD700', '#FF6B6B', '#4ECDC4', '#FFE66D', '#FF85A2'][Math.floor(Math.random() * 5)],
+                            15
+                        );
+                    }, i * 30);
+                }
+            }
+
+            // ===== ذرات =====
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.05;
+                p.life -= p.decay;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // ===== دوربین =====
+            let targetCam = mario.x - canvas.width / 2;
+            cameraX += (targetCam - cameraX) * 0.08;
+            if (cameraX < 0) cameraX = 0;
+            if (cameraX > WORLD_WIDTH - canvas.width) cameraX = WORLD_WIDTH - canvas.width;
+
+            // کاهش لرزش
+            if (screenShake > 0) screenShake *= 0.9;
+            if (screenShake < 0.1) screenShake = 0;
+        }
+
+        // ======== رسم ========
+        function draw() {
+            ctx.save();
+
+            // لرزش صفحه
+            if (screenShake > 0.5) {
+                ctx.translate(
+                    (Math.random() - 0.5) * screenShake,
+                    (Math.random() - 0.5) * screenShake
+                );
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // آسمان گرادیان
+            const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            sky.addColorStop(0, '#0c1445');
+            sky.addColorStop(0.4, '#1a3a7a');
+            sky.addColorStop(0.7, '#4a8bc2');
+            sky.addColorStop(1, '#87CEEB');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // ستاره‌ها
+            ctx.shadowBlur = 0;
+            for (let s of starField) {
+                const sx = s.x - cameraX * 0.1;
+                if (sx > -10 && sx < canvas.width + 10) {
+                    const brightness = 0.5 + 0.5 * Math.sin(s.twinkle + frameCount * 0.02);
+                    ctx.globalAlpha = brightness;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(sx, s.y, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.globalAlpha = 1;
+
+            // ابرهای زیبا
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = 'rgba(255,255,255,0.2)';
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            drawCloud(150 - cameraX * 0.15, 60, 80);
+            drawCloud(500 - cameraX * 0.15, 40, 100);
+            drawCloud(1000 - cameraX * 0.15, 80, 70);
+            drawCloud(1800 - cameraX * 0.15, 50, 90);
+            drawCloud(2800 - cameraX * 0.15, 70, 80);
+            drawCloud(4000 - cameraX * 0.15, 45, 100);
+            drawCloud(5500 - cameraX * 0.15, 75, 70);
+            drawCloud(7200 - cameraX * 0.15, 55, 90);
+            drawCloud(9000 - cameraX * 0.15, 65, 85);
+            ctx.shadowBlur = 0;
+
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            // ===== سکوها با گرافیک پیشرفته =====
+            for (let p of platforms) {
+                // سایه
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 15;
+                ctx.shadowOffsetY = 5;
+
+                // بدنه اصلی
+                const grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
+                if (p.y < 300) {
+                    grad.addColorStop(0, '#6a9fb5');
+                    grad.addColorStop(0.5, '#4a7a9a');
+                    grad.addColorStop(1, '#2a5a7a');
+                } else if (p.y > 400) {
+                    grad.addColorStop(0, '#8B6B4D');
+                    grad.addColorStop(0.5, '#A67B5B');
+                    grad.addColorStop(1, '#6B4F3A');
+                } else {
+                    grad.addColorStop(0, '#7a9a5a');
+                    grad.addColorStop(0.5, '#5a8a4a');
+                    grad.addColorStop(1, '#3a6a2a');
+                }
+                ctx.fillStyle = grad;
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+
+                // خطوط تزئینی
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < p.w; i += 25) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x + i, p.y);
+                    ctx.lineTo(p.x + i + 10, p.y + p.h);
+                    ctx.stroke();
+                }
+
+                // لبه بالایی
+                ctx.fillStyle = 'rgba(255,215,0,0.2)';
+                ctx.fillRect(p.x, p.y, p.w, 4);
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
+            }
+
+            // ===== سکه‌ها با افکت =====
+            for (let c of coins) {
+                if (c.collected) continue;
+                c.glow += 0.05;
+                const glowSize = 15 + 5 * Math.sin(c.glow);
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 30;
+
+                // هاله
+                const grd = ctx.createRadialGradient(
+                    c.x + c.w / 2, c.y + c.h / 2, 2,
+                    c.x + c.w / 2, c.y + c.h / 2, glowSize
+                );
+                grd.addColorStop(0, 'rgba(255,215,0,0.8)');
+                grd.addColorStop(0.5, 'rgba(255,215,0,0.4)');
+                grd.addColorStop(1, 'rgba(255,215,0,0)');
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(c.x + c.w / 2, c.y + c.h / 2, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // خود سکه
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 25;
+                ctx.beginPath();
+                ctx.arc(c.x + c.w / 2, c.y + c.h / 2, c.w / 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFD700';
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#B8860B';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', c.x + c.w / 2, c.y + c.h / 2 + 1);
+            }
+
+            // ===== دشمنان با گرافیک فوق‌العاده =====
+            for (let e of enemies) {
+                if (!e.alive) continue;
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 20;
+
+                // بدن
+                const bodyGrad = ctx.createRadialGradient(
+                    e.x + 8, e.y + 8, 5,
+                    e.x + e.w / 2, e.y + e.h / 2, e.w
+                );
+                bodyGrad.addColorStop(0, '#ff6b6b');
+                bodyGrad.addColorStop(0.6, '#e53e3e');
+                bodyGrad.addColorStop(1, '#a02020');
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.ellipse(e.x + e.w / 2, e.y + e.h / 2, e.w / 2, e.h / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // چشم‌ها
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.ellipse(e.x + 10, e.y + 14, 8, 9, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(e.x + e.w - 10, e.y + 14, 8, 9, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // مردمک‌ها
+                ctx.fillStyle = '#1a1a2e';
+                const lookX = e.vx < 0 ? 2 : -2;
+                ctx.beginPath();
+                ctx.arc(e.x + 10 + lookX, e.y + 16, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(e.x + e.w - 10 + lookX, e.y + 16, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // کلاه
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = '#c0392b';
+                ctx.beginPath();
+                ctx.ellipse(e.x + e.w / 2, e.y + 6, e.w / 2 + 4, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // دهان خندان
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#1a1a2e';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(e.x + e.w / 2, e.y + 26, 8, 0.1, Math.PI - 0.1);
+                ctx.stroke();
+
+                // دکمه‌ها
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.arc(e.x + 8, e.y + 32, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(e.x + e.w - 8, e.y + 32, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // پاها
+                ctx.shadowBlur = 5;
+                ctx.fillStyle = '#2d3436';
+                ctx.fillRect(e.x + 4, e.y + e.h - 6, 10, 6);
+                ctx.fillRect(e.x + e.w - 14, e.y + e.h - 6, 10, 6);
+            }
+
+            // ===== ماریو با گرافیک فوق‌العاده =====
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 25;
+            const mx = mario.x,
+                my = mario.y;
+
+            // کلاه قرمز
+            ctx.fillStyle = '#e53e3e';
+            ctx.beginPath();
+            ctx.ellipse(mx + 18, my + 6, 20, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // لبه کلاه
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(mx + 2, my + 10, 32, 4);
+
+            // صورت
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FDBF8A';
+            ctx.fillRect(mx + 4, my + 12, 28, 16);
+
+            // چشم‌ها
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.ellipse(mx + (mario.facing === 1 ? 22 : 10), my + 16, 7, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(mx + (mario.facing === 1 ? 14 : 22), my + 16, 7, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // مردمک
+            ctx.fillStyle = '#1a1a2e';
+            const eyeOff = mario.facing === 1 ? 3 : -3;
+            ctx.beginPath();
+            ctx.arc(mx + (mario.facing === 1 ? 22 : 10) + eyeOff, my + 18, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(mx + (mario.facing === 1 ? 14 : 22) + eyeOff, my + 18, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ابرو
+            ctx.strokeStyle = '#5D3A1A';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(mx + (mario.facing === 1 ? 18 : 6), my + 10);
+            ctx.lineTo(mx + (mario.facing === 1 ? 26 : 14), my + 8);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(mx + (mario.facing === 1 ? 10 : 22), my + 10);
+            ctx.lineTo(mx + (mario.facing === 1 ? 18 : 30), my + 8);
+            ctx.stroke();
+
+            // سبیل
+            ctx.fillStyle = '#5D3A1A';
+            ctx.fillRect(mx + 6, my + 22, 24, 3);
+            ctx.fillRect(mx + 4, my + 24, 28, 2);
+
+            // بدن
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#e53e3e';
+            ctx.fillRect(mx + 4, my + 28, 28, 10);
+
+            // دکمه
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(mx + 18, my + 34, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // شلوار
+            ctx.fillStyle = '#2d6cb0';
+            ctx.fillRect(mx + 2, my + 38, 32, 6);
+
+            // پاها
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = '#5D3A1A';
+            if (mario.onGround && (keys['ArrowLeft'] || keys['ArrowRight'] || keys['a'] || keys['A'] || keys['d'] || keys[
+                    'D'])) {
+                const step = Math.sin(frameCount * 0.2) * 3;
+                ctx.fillRect(mx + 2, my + 44, 12, 8 + step);
+                ctx.fillRect(mx + 22, my + 44, 12, 8 - step);
+            } else {
+                ctx.fillRect(mx + 2, my + 44, 12, 8);
+                ctx.fillRect(mx + 22, my + 44, 12, 8);
+            }
+
+            // ===== ذرات =====
+            ctx.shadowBlur = 0;
+            for (let p of particles) {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+
+            ctx.restore();
+
+            // ===== پیام‌های پایان =====
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 150, canvas.width, 100);
+                ctx.fillStyle = '#ff4444';
+                ctx.font = 'bold 56px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 30;
+                ctx.fillText('💀 GAME OVER', canvas.width / 2, 200);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.fillText('برای شروع مجدد کلیک کن', canvas.width / 2, 255);
+            } else if (win) {
+                // افکت ویژه برد
+                const grad = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 10,
+                    canvas.width / 2, canvas.height / 2, 300
+                );
+                grad.addColorStop(0, 'rgba(255,215,0,0.3)');
+                grad.addColorStop(0.5, 'rgba(255,215,0,0.1)');
+                grad.addColorStop(1, 'rgba(255,215,0,0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, 120, canvas.width, 160);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 60px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 50;
+                ctx.fillText('🏆 ۱۰۰۰۰ متر! قهرمان! 🌟', canvas.width / 2, 180);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                ctx.font = '26px Arial';
+                ctx.fillText('🎉 تو یک افسانه‌ای! برای ادامه کلیک کن', canvas.width / 2, 245);
+            }
+
+            ctx.restore();
+        }
+
+        function drawCloud(x, y, size) {
+            ctx.beginPath();
+            ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.5, y - size * 0.3, size * 0.5, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.9, y, size * 0.5, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.4, y + size * 0.1, size * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ======== حلقه ========
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ======== کنترل ========
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        canvas.addEventListener('click', () => {
+            if (gameOver || win) {
+                buildLevel();
+            }
+        });
+
+        buildLevel();
+        gameLoop();
+
+        window.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
