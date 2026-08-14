@@ -1,0 +1,1088 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎮 Super Mario - Legendary Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+        .game-wrapper {
+            background: linear-gradient(145deg, #1a2a6c, #b21f1f, #fdbb2d);
+            padding: 20px;
+            border-radius: 30px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 18px;
+            background: #87CEEB;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.3);
+            border: 3px solid #f1c40f;
+            cursor: pointer;
+            width: 100%;
+            max-width: 1000px;
+            height: auto;
+        }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 20px;
+            border-radius: 40px;
+            border: 1px solid #ffd700;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .info div {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .controls span {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid #ffd700;
+            font-size: 12px;
+        }
+        #status {
+            color: #2ecc71;
+            font-size: 18px;
+            text-shadow: 0 0 20px #2ecc71;
+        }
+        .score-value {
+            color: #f1c40f;
+            font-size: 20px;
+            min-width: 30px;
+            display: inline-block;
+        }
+        @media (max-width: 700px) {
+            .game-wrapper { padding: 10px; }
+            .info { font-size: 12px; padding: 8px 12px; }
+            .controls span { font-size: 10px; padding: 3px 8px; }
+            #status { font-size: 14px; }
+            .score-value { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <canvas id="gameCanvas" width="1000" height="500"></canvas>
+        <div class="info">
+            <div>⭐ Score: <span class="score-value" id="scoreDisplay">0</span></div>
+            <div>🏃 Distance: <span class="score-value" id="distanceDisplay">0</span>m</div>
+            <div>👾 Enemies: <span class="score-value" id="enemyCount">0</span></div>
+            <div class="controls">
+                <span>← →</span>
+                <span>↑ / Space</span>
+                <span>Shift Dash</span>
+            </div>
+            <div id="status">▶ Playing</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const distanceSpan = document.getElementById('distanceDisplay');
+        const enemyCountSpan = document.getElementById('enemyCount');
+        const statusDiv = document.getElementById('status');
+
+        // ======== Settings ========
+        const GRAVITY = 0.55;
+        const JUMP_FORCE = -13;
+        const MOVE_SPEED = 5;
+        const WORLD_WIDTH = 12000;
+        const WIN_DISTANCE = 10000;
+        const MAX_PARTICLES = 200;
+
+        // ======== Variables ========
+        let cameraX = 0;
+        let distance = 0;
+        let score = 0;
+        let gameOver = false;
+        let win = false;
+        let keys = {};
+        let frameCount = 0;
+        let screenShake = 0;
+        let particles = [];
+        let fireworkParticles = [];
+        let celebrationTimer = 0;
+        let comboCount = 0;
+
+        // ======== Mario ========
+        const mario = {
+            x: 150,
+            y: 350,
+            w: 36,
+            h: 46,
+            vy: 0,
+            onGround: false,
+            facing: 1,
+            frame: 0,
+            animTimer: 0,
+            invincible: 0,
+            dashCooldown: 0
+        };
+
+        // ======== Arrays ========
+        let coins = [];
+        let enemies = [];
+        let platforms = [];
+        let movingPlatforms = [];
+        let powerups = [];
+        let starField = [];
+
+        // ======== Stars ========
+        for (let i = 0; i < 80; i++) {
+            starField.push({
+                x: Math.random() * WORLD_WIDTH,
+                y: Math.random() * 300,
+                size: Math.random() * 2 + 1,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+
+        // ======== Collision ========
+        function rectCollide(a, b) {
+            return a.x < b.x + b.w && a.x + a.w > b.x &&
+                a.y < b.y + b.h && a.y + a.h > b.y;
+        }
+
+        // ======== UI Update ========
+        function updateUI() {
+            scoreSpan.textContent = score;
+            distanceSpan.textContent = Math.floor(distance);
+            enemyCountSpan.textContent = enemies.filter(e => e.alive).length;
+        }
+
+        // ======== Particles ========
+        function spawnParticles(x, y, color, count = 15, speed = 6) {
+            const actualCount = Math.min(count, 30);
+            for (let i = 0; i < actualCount && particles.length < MAX_PARTICLES; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = Math.random() * speed + 1;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd - 2,
+                    life: 1,
+                    decay: 0.01 + Math.random() * 0.02,
+                    size: 2 + Math.random() * 6,
+                    color,
+                    gravity: 0.06
+                });
+            }
+        }
+
+        function spawnFirework(x, y) {
+            const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#FF85A2', '#A8E6CF', '#FF9A76', '#FFD93D'];
+            for (let i = 0; i < 30 && fireworkParticles.length < 150; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 2;
+                fireworkParticles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2,
+                    life: 1,
+                    decay: 0.008 + Math.random() * 0.015,
+                    size: 3 + Math.random() * 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    gravity: 0.04
+                });
+            }
+        }
+
+        // ======== Build Level ========
+        function buildLevel() {
+            platforms = [];
+            coins = [];
+            enemies = [];
+            particles = [];
+            powerups = [];
+            movingPlatforms = [];
+            fireworkParticles = [];
+            distance = 0;
+            score = 0;
+            gameOver = false;
+            win = false;
+            cameraX = 0;
+            frameCount = 0;
+            comboCount = 0;
+            celebrationTimer = 0;
+            mario.x = 150;
+            mario.y = 350;
+            mario.vy = 0;
+            mario.onGround = false;
+            mario.invincible = 0;
+            statusDiv.textContent = '▶ Playing';
+            statusDiv.style.color = '#2ecc71';
+            statusDiv.style.textShadow = '0 0 20px #2ecc71';
+
+            // Ground
+            platforms.push({ x: 0, y: 440, w: 700, h: 60 });
+
+            // Platforms
+            const platData = [
+                { x: 800, y: 380, w: 130, h: 20 },
+                { x: 980, y: 300, w: 130, h: 20 },
+                { x: 1160, y: 440, w: 450, h: 60 },
+                { x: 1680, y: 370, w: 110, h: 20 },
+                { x: 1840, y: 290, w: 110, h: 20 },
+                { x: 2000, y: 370, w: 110, h: 20 },
+                { x: 2160, y: 440, w: 400, h: 60 },
+                { x: 2640, y: 330, w: 150, h: 20 },
+                { x: 2850, y: 260, w: 150, h: 20 },
+                { x: 3060, y: 330, w: 150, h: 20 },
+                { x: 3270, y: 440, w: 350, h: 60 },
+                { x: 3700, y: 370, w: 120, h: 20 },
+                { x: 3880, y: 290, w: 120, h: 20 },
+                { x: 4060, y: 370, w: 120, h: 20 },
+                { x: 4240, y: 440, w: 500, h: 60 },
+                { x: 4820, y: 350, w: 140, h: 20 },
+                { x: 5020, y: 270, w: 140, h: 20 },
+                { x: 5220, y: 350, w: 140, h: 20 },
+                { x: 5420, y: 440, w: 400, h: 60 },
+                { x: 5920, y: 380, w: 130, h: 20 },
+                { x: 6120, y: 300, w: 130, h: 20 },
+                { x: 6320, y: 440, w: 450, h: 60 },
+                { x: 6850, y: 370, w: 120, h: 20 },
+                { x: 7050, y: 290, w: 120, h: 20 },
+                { x: 7250, y: 370, w: 120, h: 20 },
+                { x: 7450, y: 440, w: 400, h: 60 },
+                { x: 8000, y: 420, w: 2000, h: 80 },
+                { x: 10200, y: 380, w: 1800, h: 120 },
+            ];
+            for (let p of platData) platforms.push(p);
+
+            // Moving Platforms
+            movingPlatforms.push({ x: 1500, y: 300, w: 120, h: 20, startX: 1450, endX: 1650, speed: 1.5, dir: 1 });
+            movingPlatforms.push({ x: 4600, y: 320, w: 120, h: 20, startX: 4550, endX: 4750, speed: 1.8, dir: 1 });
+            movingPlatforms.push({ x: 6600, y: 310, w: 120, h: 20, startX: 6550, endX: 6750, speed: 1.6, dir: 1 });
+
+            // Coins
+            const coinPos = [
+                [820, 350],
+                [870, 350],
+                [1000, 270],
+                [1050, 270],
+                [1250, 410],
+                [1300, 410],
+                [1350, 410],
+                [1700, 340],
+                [1750, 340],
+                [1860, 260],
+                [1910, 260],
+                [2020, 340],
+                [2070, 340],
+                [2240, 410],
+                [2290, 410],
+                [2340, 410],
+                [2660, 300],
+                [2730, 300],
+                [2870, 230],
+                [2940, 230],
+                [3080, 300],
+                [3150, 300],
+                [3330, 410],
+                [3380, 410],
+                [3430, 410],
+                [3720, 340],
+                [3780, 340],
+                [3900, 260],
+                [3960, 260],
+                [4080, 340],
+                [4140, 340],
+                [4320, 410],
+                [4370, 410],
+                [4420, 410],
+                [4840, 320],
+                [4900, 320],
+                [5040, 240],
+                [5100, 240],
+                [5240, 320],
+                [5300, 320],
+                [5480, 410],
+                [5530, 410],
+                [5580, 410],
+                [5940, 350],
+                [6000, 350],
+                [6140, 270],
+                [6200, 270],
+                [6360, 410],
+                [6410, 410],
+                [6460, 410],
+                [6870, 340],
+                [6930, 340],
+                [7070, 260],
+                [7130, 260],
+                [7270, 340],
+                [7330, 340],
+                [7490, 410],
+                [7540, 410],
+                [7590, 410],
+                [8100, 390],
+                [8200, 390],
+                [8300, 390],
+                [8400, 390],
+                [8500, 390],
+                [8600, 390],
+                [8700, 390],
+                [8800, 390],
+                [8900, 390],
+                [10300, 350],
+                [10400, 350],
+                [10500, 350],
+                [10600, 350],
+                [10700, 350],
+                [10800, 350],
+                [10900, 350],
+                [11000, 350],
+            ];
+            for (let p of coinPos) {
+                coins.push({ x: p[0], y: p[1], w: 20, h: 20, collected: false, glow: Math.random() * Math.PI * 2,
+                    bob: Math.random() * Math.PI * 2 });
+            }
+
+            // Enemies
+            const enemyData = [
+                { x: 500, y: 410, vx: -1.8 },
+                { x: 1200, y: 410, vx: -2.0 },
+                { x: 1720, y: 340, vx: -1.5 },
+                { x: 2220, y: 410, vx: -2.2 },
+                { x: 2700, y: 300, vx: -1.7 },
+                { x: 3340, y: 410, vx: -2.4 },
+                { x: 3760, y: 340, vx: -1.6 },
+                { x: 4300, y: 410, vx: -2.1 },
+                { x: 4880, y: 320, vx: -1.9 },
+                { x: 5480, y: 410, vx: -2.3 },
+                { x: 5980, y: 350, vx: -1.4 },
+                { x: 6900, y: 340, vx: -1.8 },
+                { x: 7500, y: 410, vx: -2.0 },
+                { x: 8300, y: 390, vx: -1.6 },
+            ];
+            for (let e of enemyData) {
+                enemies.push({ x: e.x, y: e.y - 40, w: 34, h: 40, vx: e.vx, alive: true, phase: Math.random() * Math.PI *
+                        2 });
+            }
+
+            // Powerups
+            powerups.push({ x: 2700, y: 270, w: 30, h: 30, type: 'star', collected: false, glow: 0 });
+            powerups.push({ x: 4900, y: 280, w: 30, h: 30, type: 'mushroom', collected: false, glow: 0 });
+            powerups.push({ x: 7000, y: 280, w: 30, h: 30, type: 'star', collected: false, glow: 0 });
+
+            updateUI();
+        }
+
+        // ======== Update ========
+        function update() {
+            if (gameOver || win) {
+                if (win) {
+                    celebrationTimer++;
+                    if (celebrationTimer % 20 === 0 && celebrationTimer < 600) {
+                        spawnFirework(
+                            Math.random() * canvas.width + cameraX,
+                            Math.random() * 250 + 50
+                        );
+                    }
+                }
+                updateParticles();
+                return;
+            }
+
+            frameCount++;
+
+            // Mario movement
+            let moveX = 0;
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) { moveX = -MOVE_SPEED;
+                mario.facing = -1; }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) { moveX = MOVE_SPEED;
+                mario.facing = 1; }
+
+            // Dash
+            if ((keys['ShiftLeft'] || keys['ShiftRight']) && mario.dashCooldown <= 0 && mario.onGround) {
+                moveX *= 2.5;
+                mario.dashCooldown = 30;
+                spawnParticles(mario.x + mario.w / 2, mario.y + mario.h, '#87CEEB', 10);
+            }
+            if (mario.dashCooldown > 0) mario.dashCooldown--;
+
+            mario.x += moveX;
+
+            // Animation
+            if (moveX !== 0 && mario.onGround) {
+                mario.animTimer++;
+                if (mario.animTimer % 6 === 0) mario.frame = (mario.frame + 1) % 4;
+            } else if (mario.onGround) {
+                mario.frame = 0;
+            }
+
+            // Jump
+            if ((keys['Space'] || keys['ArrowUp'] || keys['w'] || keys['W']) && mario.onGround) {
+                mario.vy = JUMP_FORCE;
+                mario.onGround = false;
+                spawnParticles(mario.x + mario.w / 2, mario.y + mario.h, '#87CEEB', 8);
+            }
+            if ((keys['Space'] || keys['ArrowUp'] || keys['w'] || keys['W']) && mario.vy < -2) {
+                mario.vy -= 0.15;
+            }
+
+            // Gravity
+            mario.vy += GRAVITY;
+            mario.y += mario.vy;
+
+            // Platform collision
+            mario.onGround = false;
+            const allPlatforms = [...platforms, ...movingPlatforms];
+            for (let p of allPlatforms) {
+                if (rectCollide(mario, p)) {
+                    if (mario.vy >= 0 && mario.y + mario.h - mario.vy <= p.y + 10) {
+                        mario.y = p.y - mario.h;
+                        mario.vy = 0;
+                        mario.onGround = true;
+                    } else if (mario.vy < 0 && mario.y <= p.y + p.h) {
+                        mario.y = p.y + p.h;
+                        mario.vy = 0;
+                    }
+                }
+            }
+
+            // Boundaries
+            if (mario.x < 0) mario.x = 0;
+            if (mario.x + mario.w > WORLD_WIDTH) mario.x = WORLD_WIDTH - mario.w;
+
+            // Distance
+            if (mario.x > distance) {
+                distance = mario.x;
+                if (Math.floor(distance) % 100 === 0 && distance > 0) {
+                    score += 5;
+                    spawnParticles(mario.x, mario.y - 20, '#f1c40f', 8);
+                    updateUI();
+                }
+            }
+
+            // Fall
+            if (mario.y > canvas.height + 100) {
+                gameOver = true;
+                statusDiv.textContent = '💀 You fell!';
+                statusDiv.style.color = '#e74c3c';
+                statusDiv.style.textShadow = '0 0 20px #e74c3c';
+                return;
+            }
+
+            // Coins
+            for (let c of coins) {
+                if (!c.collected && rectCollide(mario, c)) {
+                    c.collected = true;
+                    score += 15;
+                    comboCount++;
+                    if (comboCount % 5 === 0) {
+                        score += 20;
+                        spawnParticles(c.x + c.w / 2, c.y + c.h / 2, '#FFD700', 20);
+                    }
+                    spawnParticles(c.x + c.w / 2, c.y + c.h / 2, '#FFD700', 10);
+                    updateUI();
+                }
+            }
+
+            // Powerups
+            for (let p of powerups) {
+                if (!p.collected && rectCollide(mario, p)) {
+                    p.collected = true;
+                    if (p.type === 'star') {
+                        score += 50;
+                        mario.invincible = 250;
+                        spawnParticles(mario.x + mario.w / 2, mario.y + mario.h / 2, '#FFD700', 30);
+                        statusDiv.textContent = '⭐ Invincible!';
+                        statusDiv.style.color = '#ffd700';
+                        statusDiv.style.textShadow = '0 0 20px #ffd700';
+                        setTimeout(() => {
+                            if (!gameOver && !win) {
+                                statusDiv.textContent = '▶ Playing';
+                                statusDiv.style.color = '#2ecc71';
+                                statusDiv.style.textShadow = '0 0 20px #2ecc71';
+                            }
+                        }, 2000);
+                    } else if (p.type === 'mushroom') {
+                        score += 30;
+                        mario.w = 44;
+                        mario.h = 56;
+                        mario.y -= 10;
+                        spawnParticles(mario.x + mario.w / 2, mario.y + mario.h / 2, '#e74c3c', 20);
+                        setTimeout(() => { mario.w = 36;
+                            mario.h = 46; }, 7000);
+                    }
+                    updateUI();
+                }
+            }
+
+            // Moving platforms
+            for (let mp of movingPlatforms) {
+                mp.x += mp.speed * mp.dir;
+                if (mp.x >= mp.endX || mp.x <= mp.startX) mp.dir *= -1;
+            }
+
+            // Enemies
+            for (let e of enemies) {
+                if (!e.alive) continue;
+                e.x += e.vx;
+                e.phase += 0.05;
+
+                let onPlatform = false;
+                for (let p of allPlatforms) {
+                    if (rectCollide(e, p)) {
+                        if (e.vx < 0) e.x = p.x + p.w;
+                        else e.x = p.x - e.w;
+                        e.vx *= -1;
+                        onPlatform = true;
+                        break;
+                    }
+                }
+
+                if (e.x < -200 || e.x > WORLD_WIDTH + 200) {
+                    e.alive = false;
+                    updateUI();
+                    continue;
+                }
+
+                if (e.alive && rectCollide(mario, e)) {
+                    if (mario.invincible > 0) {
+                        e.alive = false;
+                        score += 20;
+                        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#ff6b6b', 15);
+                        updateUI();
+                        continue;
+                    }
+                    if (mario.vy > 0 && mario.y + mario.h - mario.vy <= e.y + 12) {
+                        e.alive = false;
+                        mario.vy = -10;
+                        score += 30;
+                        comboCount += 2;
+                        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#e74c3c', 20);
+                        screenShake = 8;
+                        updateUI();
+                    } else if (mario.invincible === 0) {
+                        gameOver = true;
+                        statusDiv.textContent = '💀 Hit by enemy!';
+                        statusDiv.style.color = '#e74c3c';
+                        statusDiv.style.textShadow = '0 0 20px #e74c3c';
+                        return;
+                    }
+                }
+            }
+
+            enemies = enemies.filter(e => e.alive);
+            updateUI();
+
+            if (mario.invincible > 0) mario.invincible--;
+
+            // Win
+            if (distance >= WIN_DISTANCE) {
+                win = true;
+                celebrationTimer = 0;
+                statusDiv.textContent = '🏆 Champion! 10000m! 🌟';
+                statusDiv.style.color = '#f1c40f';
+                statusDiv.style.textShadow = '0 0 30px #f1c40f, 0 0 60px rgba(241,196,15,0.3)';
+                for (let i = 0; i < 10; i++) {
+                    setTimeout(() => {
+                        spawnFirework(
+                            mario.x + (Math.random() - 0.5) * 300,
+                            Math.random() * 250 + 50
+                        );
+                    }, i * 150);
+                }
+            }
+
+            updateParticles();
+
+            // Camera
+            let targetCam = mario.x - canvas.width * 0.4;
+            cameraX += (targetCam - cameraX) * 0.08;
+            cameraX = Math.max(0, Math.min(cameraX, WORLD_WIDTH - canvas.width));
+
+            if (screenShake > 0) screenShake *= 0.9;
+            if (screenShake < 0.1) screenShake = 0;
+        }
+
+        // ======== Update Particles ========
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity || 0.05;
+                p.life -= p.decay;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            for (let i = fireworkParticles.length - 1; i >= 0; i--) {
+                let p = fireworkParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity || 0.05;
+                p.vx *= 0.99;
+                p.vy *= 0.99;
+                p.life -= p.decay;
+                if (p.life <= 0) fireworkParticles.splice(i, 1);
+            }
+        }
+
+        // ======== Draw ========
+        function draw() {
+            ctx.save();
+
+            if (screenShake > 0.5) {
+                ctx.translate(
+                    (Math.random() - 0.5) * screenShake,
+                    (Math.random() - 0.5) * screenShake
+                );
+            }
+
+            // Sky
+            const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            sky.addColorStop(0, '#0c1445');
+            sky.addColorStop(0.4, '#1a3a7a');
+            sky.addColorStop(0.7, '#4a8bc2');
+            sky.addColorStop(1, '#87CEEB');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            ctx.shadowBlur = 0;
+            for (let s of starField) {
+                const sx = s.x - cameraX * 0.1;
+                if (sx > -10 && sx < canvas.width + 10) {
+                    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(s.twinkle + frameCount * 0.02);
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(sx, s.y, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.globalAlpha = 1;
+
+            // Clouds
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            const clouds = [
+                [150, 60, 80],
+                [500, 40, 100],
+                [1000, 80, 70],
+                [1800, 50, 90],
+                [2800, 70, 80],
+                [4000, 45, 100],
+                [5500, 75, 70],
+                [7200, 55, 90],
+                [9000, 65, 85]
+            ];
+            for (let c of clouds) {
+                const cx = c[0] - cameraX * 0.15;
+                if (cx > -100 && cx < canvas.width + 100) {
+                    ctx.beginPath();
+                    ctx.arc(cx, c[1], c[2] * 0.6, 0, Math.PI * 2);
+                    ctx.arc(cx + c[2] * 0.5, c[1] - c[2] * 0.3, c[2] * 0.5, 0, Math.PI * 2);
+                    ctx.arc(cx + c[2] * 0.9, c[1], c[2] * 0.5, 0, Math.PI * 2);
+                    ctx.arc(cx + c[2] * 0.4, c[1] + c[2] * 0.1, c[2] * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            // Platforms
+            for (let p of platforms) {
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 12;
+                ctx.shadowOffsetY = 4;
+                const grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
+                if (p.y < 300) {
+                    grad.addColorStop(0, '#6a9fb5');
+                    grad.addColorStop(1, '#2a5a7a');
+                } else if (p.y > 400) {
+                    grad.addColorStop(0, '#8B6B4D');
+                    grad.addColorStop(1, '#6B4F3A');
+                } else {
+                    grad.addColorStop(0, '#7a9a5a');
+                    grad.addColorStop(1, '#3a6a2a');
+                }
+                ctx.fillStyle = grad;
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                for (let i = 0; i < p.w; i += 30) {
+                    ctx.fillRect(p.x + i, p.y + 2, 10, 2);
+                }
+            }
+
+            // Moving platforms
+            for (let mp of movingPlatforms) {
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 12;
+                ctx.shadowOffsetY = 4;
+                const grad = ctx.createLinearGradient(mp.x, mp.y, mp.x, mp.y + mp.h);
+                grad.addColorStop(0, '#6a9fb5');
+                grad.addColorStop(1, '#2a5a7a');
+                ctx.fillStyle = grad;
+                ctx.fillRect(mp.x, mp.y, mp.w, mp.h);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = '18px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(mp.dir > 0 ? '→' : '←', mp.x + mp.w / 2, mp.y + 16);
+            }
+
+            // Coins
+            for (let c of coins) {
+                if (c.collected) continue;
+                c.glow += 0.05;
+                c.bob += 0.03;
+                const bobY = Math.sin(c.bob) * 2;
+                const glowSize = 15 + 5 * Math.sin(c.glow);
+
+                const grd = ctx.createRadialGradient(
+                    c.x + c.w / 2, c.y + c.h / 2 + bobY, 2,
+                    c.x + c.w / 2, c.y + c.h / 2 + bobY, glowSize
+                );
+                grd.addColorStop(0, 'rgba(255,215,0,0.4)');
+                grd.addColorStop(1, 'rgba(255,215,0,0)');
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(c.x + c.w / 2, c.y + c.h / 2 + bobY, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 20;
+                ctx.beginPath();
+                ctx.arc(c.x + c.w / 2, c.y + c.h / 2 + bobY, c.w / 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFD700';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#B8860B';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', c.x + c.w / 2, c.y + c.h / 2 + bobY + 1);
+            }
+
+            // Powerups
+            for (let p of powerups) {
+                if (p.collected) continue;
+                p.glow += 0.05;
+                const bobY = Math.sin(p.glow * 1.5) * 3;
+                ctx.shadowColor = p.type === 'star' ? '#FFD700' : '#e74c3c';
+                ctx.shadowBlur = 25;
+                ctx.font = '26px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(p.type === 'star' ? '⭐' : '🍄', p.x + p.w / 2, p.y + p.h / 2 + bobY);
+            }
+
+            // Enemies
+            for (let e of enemies) {
+                if (!e.alive) continue;
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 15;
+
+                const grad = ctx.createRadialGradient(
+                    e.x + 8, e.y + 8, 5,
+                    e.x + e.w / 2, e.y + e.h / 2, e.w
+                );
+                grad.addColorStop(0, '#ff6b6b');
+                grad.addColorStop(1, '#a02020');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.ellipse(e.x + e.w / 2, e.y + e.h / 2, e.w / 2, e.h / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.ellipse(e.x + 10, e.y + 14, 7, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(e.x + e.w - 10, e.y + 14, 7, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#1a1a2e';
+                const lookX = e.vx < 0 ? 2 : -2;
+                ctx.beginPath();
+                ctx.arc(e.x + 10 + lookX, e.y + 16, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(e.x + e.w - 10 + lookX, e.y + 16, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 5;
+                ctx.fillStyle = '#c0392b';
+                ctx.beginPath();
+                ctx.ellipse(e.x + e.w / 2, e.y + 6, e.w / 2 + 3, 9, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#1a1a2e';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(e.x + e.w / 2, e.y + 24, 7, 0.1, Math.PI - 0.1);
+                ctx.stroke();
+
+                ctx.fillStyle = '#2d3436';
+                const legOffset = Math.sin(e.phase * 2) * 2;
+                ctx.fillRect(e.x + 4, e.y + e.h - 5 + legOffset, 9, 5);
+                ctx.fillRect(e.x + e.w - 13, e.y + e.h - 5 - legOffset, 9, 5);
+                ctx.shadowBlur = 0;
+            }
+
+            // Mario
+            if (mario.invincible > 0 && Math.floor(frameCount / 4) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+            drawMario();
+            ctx.globalAlpha = 1;
+
+            // Regular particles
+            for (let p of particles) {
+                ctx.globalAlpha = p.life;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+
+            // Firework particles
+            for (let p of fireworkParticles) {
+                ctx.globalAlpha = p.life;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+
+            ctx.restore();
+
+            // Finish line
+            if (!win && !gameOver) {
+                const finishX = WIN_DISTANCE - cameraX;
+                if (finishX > 0 && finishX < canvas.width) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255,215,0,0.1)';
+                    ctx.fillRect(finishX - 2, 0, 4, canvas.height);
+                    ctx.fillStyle = 'rgba(255,215,0,0.5)';
+                    ctx.font = 'bold 22px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🏁', finishX, 15);
+                    ctx.restore();
+                }
+            }
+
+            // End messages
+            if (gameOver) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(canvas.width / 2 - 180, 150, 360, 100);
+                ctx.fillStyle = '#ff4444';
+                ctx.font = 'bold 46px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 30;
+                ctx.fillText('💀 GAME OVER', canvas.width / 2, 185);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px Arial';
+                ctx.fillText('Click to restart', canvas.width / 2, 235);
+                ctx.restore();
+            } else if (win) {
+                ctx.save();
+                const grad = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 10,
+                    canvas.width / 2, canvas.height / 2, 350
+                );
+                grad.addColorStop(0, 'rgba(255,215,0,0.15)');
+                grad.addColorStop(1, 'rgba(255,215,0,0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(canvas.width / 2 - 230, 120, 460, 160);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 44px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 40;
+                ctx.fillText('🏆 Champion!', canvas.width / 2, 160);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                ctx.font = '22px Arial';
+                ctx.fillText(`🎉 10000m! Score: ${score}`, canvas.width / 2, 210);
+                ctx.fillStyle = '#aaa';
+                ctx.font = '18px Arial';
+                ctx.fillText('Click to play again', canvas.width / 2, 255);
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        // ======== Draw Mario ========
+        function drawMario() {
+            const mx = mario.x,
+                my = mario.y;
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 20;
+
+            ctx.fillStyle = '#e53e3e';
+            ctx.beginPath();
+            ctx.ellipse(mx + 18, my + 6, 18, 11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(mx + 4, my + 10, 28, 4);
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FDBF8A';
+            ctx.fillRect(mx + 4, my + 12, 28, 16);
+
+            ctx.fillStyle = 'white';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.ellipse(mx + (mario.facing === 1 ? 22 : 10), my + 16, 6, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(mx + (mario.facing === 1 ? 14 : 22), my + 16, 6, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#1a1a2e';
+            ctx.shadowBlur = 0;
+            const eyeOff = mario.facing === 1 ? 3 : -3;
+            ctx.beginPath();
+            ctx.arc(mx + (mario.facing === 1 ? 22 : 10) + eyeOff, my + 18, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(mx + (mario.facing === 1 ? 14 : 22) + eyeOff, my + 18, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#5D3A1A';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(mx + (mario.facing === 1 ? 18 : 6), my + 10);
+            ctx.lineTo(mx + (mario.facing === 1 ? 26 : 14), my + 8);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(mx + (mario.facing === 1 ? 10 : 22), my + 10);
+            ctx.lineTo(mx + (mario.facing === 1 ? 18 : 30), my + 8);
+            ctx.stroke();
+
+            ctx.fillStyle = '#5D3A1A';
+            ctx.fillRect(mx + 6, my + 22, 24, 3);
+            ctx.fillRect(mx + 4, my + 24, 28, 2);
+
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = '#e53e3e';
+            ctx.fillRect(mx + 4, my + 28, 28, 10);
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#f1c40f';
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(mx + 18, my + 34, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = '#2d6cb0';
+            ctx.fillRect(mx + 2, my + 38, 32, 6);
+
+            ctx.shadowBlur = 5;
+            ctx.fillStyle = '#5D3A1A';
+            if (mario.onGround && (keys['ArrowLeft'] || keys['ArrowRight'] || keys['a'] || keys['d'])) {
+                const step = Math.sin(frameCount * 0.2) * 3;
+                ctx.fillRect(mx + 2, my + 44, 11, 8 + step);
+                ctx.fillRect(mx + 23, my + 44, 11, 8 - step);
+            } else if (!mario.onGround) {
+                ctx.fillRect(mx + 2, my + 44, 11, 6);
+                ctx.fillRect(mx + 23, my + 44, 11, 6);
+            } else {
+                ctx.fillRect(mx + 2, my + 44, 11, 8);
+                ctx.fillRect(mx + 23, my + 44, 11, 8);
+            }
+
+            if (mario.invincible > 0) {
+                ctx.shadowBlur = 40;
+                ctx.shadowColor = '#ffd700';
+                ctx.strokeStyle = 'rgba(255,215,0,0.2)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(mx + 18, my + 24, 28, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        // ======== Game Loop ========
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ======== Controls ========
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        canvas.addEventListener('click', () => {
+            if (gameOver || win) {
+                buildLevel();
+                fireworkParticles = [];
+                particles = [];
+            }
+        });
+
+        // ======== Start ========
+        buildLevel();
+        gameLoop();
+
+        window.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
