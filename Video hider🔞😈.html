@@ -1,0 +1,1246 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Calculator</title>
+<style>
+  /* ============================================================
+     GLOBAL RESET & BASE STYLES
+     ------------------------------------------------------------
+     - Removes default browser spacing
+     - Disables tap highlight on mobile for cleaner interactions
+     - Locks scrolling to prevent page bounce inside the app
+     ============================================================ */
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #1a1a2e;
+    overflow: hidden;
+    color: #fff;
+  }
+
+  /* ============================================================
+     CALCULATOR WRAPPER
+     ------------------------------------------------------------
+     - Fullscreen flex container that centers the calculator
+     - Uses a radial gradient for a subtle "spotlight" effect
+     - z-index 10 keeps it below the reels panel (z-index 100)
+     ============================================================ */
+  #calcWrap {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 15px;
+    background: radial-gradient(circle at 50% 0%, #1f4068 0%, #1a1a2e 70%);
+    z-index: 10;
+  }
+
+  /* ============================================================
+     CALCULATOR BODY
+     ------------------------------------------------------------
+     - Deep blue gradient gives a "premium device" look
+     - Layered shadows create depth (outer drop + inner highlight)
+     ============================================================ */
+  .calc {
+    background: linear-gradient(145deg, #16213e, #0f1a30);
+    border-radius: 28px;
+    padding: 22px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.05);
+  }
+
+  /* ============================================================
+     CALCULATOR SCREEN
+     ------------------------------------------------------------
+     - Split into two rows: small history line + large display
+     - Uses `direction: ltr` so numbers/operators read naturally
+     - `justify-content: flex-end` stacks content toward the bottom
+     ============================================================ */
+  .screen {
+    background: linear-gradient(180deg, #0a1628, #0f3460);
+    border-radius: 18px;
+    padding: 22px 20px;
+    margin-bottom: 18px;
+    text-align: left; direction: ltr;
+    min-height: 100px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    word-wrap: break-word; overflow-wrap: break-word;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,.5);
+  }
+  .history { color: #7a8ba8; font-size: 14px; min-height: 18px; }
+  .display { color: #fff; font-size: 38px; font-weight: 600; letter-spacing: 1px; }
+
+  /* ============================================================
+     BUTTON GRID
+     ------------------------------------------------------------
+     - 4-column grid with 12px gaps
+     - `.zero` spans 2 columns so the '0' key is wider
+     ============================================================ */
+  .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  /* Base button styling shared by all calculator keys */
+  button.calc-btn {
+    border: none; border-radius: 16px;
+    padding: 20px 0;
+    font-size: 19px; font-weight: 600;
+    cursor: pointer;
+    transition: transform .1s, filter .2s;
+    color: #fff;
+    background: linear-gradient(180deg, #23395d, #1a2a45);
+    box-shadow: 0 4px 12px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  button.calc-btn:active { transform: scale(.94); filter: brightness(1.2); }
+
+  /* Operator buttons (red accent) */
+  .op { background: linear-gradient(180deg, #e94560, #c72e47) !important; }
+  /* Equals button (teal accent) */
+  .eq { background: linear-gradient(180deg, #06beb6, #048b85) !important; }
+  /* Clear/backspace buttons (orange accent) */
+  .clear { background: linear-gradient(180deg, #f4a261, #d98542) !important; color: #16213e !important; }
+  /* Zero key spans two grid columns */
+  .zero { grid-column: span 2; }
+
+  /* ============================================================
+     REELS PANEL (HIDDEN APP)
+     ------------------------------------------------------------
+     - Fixed fullscreen container hidden by default
+     - Opened via the secret calculator code "1223"
+     - Two-phase display: `.active` mounts, `.visible` fades in
+     ============================================================ */
+  #reelsApp {
+    position: fixed; inset: 0;
+    background: #000;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    opacity: 0;
+    transition: opacity .35s ease;
+  }
+  #reelsApp.active { display: flex; }
+  #reelsApp.visible { opacity: 1; }
+
+  /* ============================================================
+     REELS HEADER (FLOATING OVERLAY)
+     ------------------------------------------------------------
+     - Absolutely positioned so it floats over the video
+     - `pointer-events: none` on the wrapper lets taps pass through,
+       while child elements re-enable events for interactivity
+     ============================================================ */
+  .reels-header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 20;
+    background: linear-gradient(180deg, rgba(0,0,0,.75), transparent);
+    pointer-events: none;
+  }
+  .reels-header > * { pointer-events: auto; }
+  .reels-title {
+    color: #fff; font-size: 17px; font-weight: 700;
+    text-shadow: 0 2px 8px rgba(0,0,0,.8);
+    display: flex; align-items: center; gap: 8px;
+  }
+  /* Pulsing red dot indicating "live" status */
+  .reels-title .dot {
+    width: 8px; height: 8px;
+    background: #e94560; border-radius: 50%;
+    box-shadow: 0 0 10px #e94560;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  .header-btns { display: flex; gap: 10px; }
+  .hdr-btn {
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.15);
+    color: #fff;
+    padding: 9px 16px; border-radius: 30px;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: .2s;
+  }
+  .hdr-btn:active { transform: scale(.93); background: rgba(255,255,255,.25); }
+  .hdr-btn.upload { background: linear-gradient(135deg, #06beb6, #048b85); border: none; }
+
+  /* ============================================================
+     REELS SCROLL CONTAINER
+     ------------------------------------------------------------
+     - `scroll-snap-type: y mandatory` creates the TikTok-style
+       full-page snapping behavior
+     - Scrollbar hidden for a clean, immersive look
+     ============================================================ */
+  .reels-container {
+    flex: 1;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    overscroll-behavior-y: contain;
+  }
+  .reels-container::-webkit-scrollbar { display: none; }
+
+  /* ============================================================
+     SINGLE REEL (FULLSCREEN VIDEO SLIDE)
+     ------------------------------------------------------------
+     - Each reel fills exactly 100% height
+     - `scroll-snap-stop: always` prevents fast-scroll skipping
+     - Video uses `object-fit: contain` so aspect ratio is preserved
+     ============================================================ */
+  .reel {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    background: #000;
+  }
+  .reel video {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    background: transparent;
+    display: block;
+  }
+
+  /* ============================================================
+     REEL BOTTOM OVERLAY (INFO + ACTION BUTTONS)
+     ------------------------------------------------------------
+     - Gradient fades from transparent to solid black at the bottom
+     - Provides a readable background for text over any video
+     ============================================================ */
+  .reel-overlay {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 50px 16px 18px;
+    background: linear-gradient(0deg, rgba(0,0,0,.9), rgba(0,0,0,.4) 55%, transparent);
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 12px;
+    pointer-events: none;
+  }
+  .reel-info { flex: 1; min-width: 0; pointer-events: auto; }
+  .reel-name {
+    color: #fff; font-size: 15px; font-weight: 600;
+    text-shadow: 0 2px 6px rgba(0,0,0,.9);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .reel-meta {
+    color: rgba(255,255,255,.7); font-size: 12px; margin-top: 4px;
+    text-shadow: 0 2px 6px rgba(0,0,0,.9);
+  }
+  .reel-actions { display: flex; flex-direction: column; gap: 12px; pointer-events: auto; }
+
+  /* Circular action buttons (mute / delete) */
+  .act-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff; font-size: 22px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: .2s;
+  }
+  .act-btn:active { transform: scale(.88); background: rgba(255,255,255,.3); }
+  .act-btn.del { background: linear-gradient(135deg, #e94560, #c72e47); border: none; }
+
+  /* ============================================================
+     DRAGGABLE PROGRESS BAR
+     ------------------------------------------------------------
+     - Wraps a track + fill + thumb + floating time tooltip
+     - `touch-action: none` prevents native scrolling while dragging
+     - Thumb stays hidden until hover/drag for a minimal look
+     ============================================================ */
+  .progress-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 26px;
+    z-index: 16;
+    display: flex; align-items: flex-end;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .progress-track {
+    position: relative;
+    width: 100%; height: 4px;
+    background: rgba(255,255,255,.25);
+    transition: height .2s;
+  }
+  /* Thicken the track on hover or while dragging */
+  .progress-bar:hover .progress-track,
+  .progress-bar.dragging .progress-track { height: 8px; }
+  .progress-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: #fff;
+    width: 0%;
+    pointer-events: none;
+    transition: width .05s linear;
+  }
+  /* Disable transition while dragging so the fill follows the finger instantly */
+  .progress-bar.dragging .progress-fill { transition: none; }
+  .progress-thumb {
+    position: absolute;
+    top: 50%;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform .2s;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(0,0,0,.6);
+    left: 0%;
+  }
+  .progress-bar:hover .progress-thumb,
+  .progress-bar.dragging .progress-thumb {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  /* Floating time tooltip shown only while dragging */
+  .progress-time {
+    position: absolute;
+    bottom: 34px;
+    left: 50%;
+    transform: translateX(-50%) scale(.85);
+    background: rgba(0,0,0,.9);
+    color: #fff; font-size: 13px; font-weight: 700;
+    padding: 6px 12px; border-radius: 10px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: .2s;
+    pointer-events: none;
+    direction: ltr;
+    letter-spacing: .5px;
+  }
+  .progress-bar.dragging .progress-time { opacity: 1; transform: translateX(-50%) scale(1); }
+
+  /* ============================================================
+     REEL COUNTER (e.g. "3 / 12")
+     ------------------------------------------------------------
+     - Small pill-shaped indicator floating above the overlay
+     ============================================================ */
+  .counter {
+    position: absolute;
+    left: 16px; bottom: 90px;
+    color: #fff; font-size: 13px; font-weight: 600;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(8px);
+    padding: 6px 12px;
+    border-radius: 20px;
+    z-index: 15;
+    text-shadow: 0 1px 4px rgba(0,0,0,.8);
+    direction: ltr;
+  }
+
+  /* ============================================================
+     SEEK FLASH ANIMATION
+     ------------------------------------------------------------
+     - Circular badge that pops up during double-tap seek
+       (e.g. "10 ⏩" or "⏪ 10")
+     ============================================================ */
+  .seek-flash {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) scale(.7);
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(10px);
+    color: #fff; font-size: 18px; font-weight: 700;
+    padding: 18px 28px; border-radius: 50%;
+    opacity: 0;
+    transition: .4s ease;
+    pointer-events: none;
+    z-index: 18;
+    display: flex; align-items: center; justify-content: center;
+    direction: ltr;
+    min-width: 90px; min-height: 90px;
+  }
+  .seek-flash.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+
+  /* ============================================================
+     EMPTY STATE (NO VIDEOS UPLOADED YET)
+     ------------------------------------------------------------
+     - Friendly prompt with an upload CTA button
+     ============================================================ */
+  .empty-state {
+    height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 30px; text-align: center;
+    scroll-snap-align: start;
+  }
+  .empty-icon {
+    font-size: 80px; margin-bottom: 20px;
+    filter: drop-shadow(0 0 20px rgba(6,190,182,.5));
+  }
+  .empty-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .empty-sub { color: #7a8ba8; font-size: 14px; margin-bottom: 25px; line-height: 1.7; }
+  .empty-btn {
+    background: linear-gradient(135deg, #06beb6, #048b85);
+    color: #fff; border: none;
+    padding: 14px 30px; border-radius: 30px;
+    font-size: 16px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(6,190,182,.4);
+    transition: .2s;
+  }
+  .empty-btn:active { transform: scale(.95); }
+
+  /* Hidden file input triggered by the upload buttons */
+  #fileInput { display: none; }
+
+  /* ============================================================
+     TOAST NOTIFICATION
+     ------------------------------------------------------------
+     - Slides up from the bottom for feedback messages
+     - `.error` modifier switches the background to red
+     ============================================================ */
+  .toast {
+    position: fixed;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: rgba(6,190,182,.95);
+    color: #fff;
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 600;
+    z-index: 200;
+    opacity: 0;
+    transition: .35s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.error { background: rgba(233,69,96,.95); }
+
+  /* ============================================================
+     CENTER PLAY/PAUSE INDICATOR
+     ------------------------------------------------------------
+     - Big circular icon that flashes briefly when playback toggles
+     ============================================================ */
+  .play-pause {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 34px;
+    pointer-events: none;
+    transition: transform .25s, opacity .25s;
+    opacity: 0;
+    z-index: 12;
+  }
+  .play-pause.flash { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ==================== CALCULATOR UI ==================== -->
+<div id="calcWrap">
+  <div class="calc">
+    <div class="screen">
+      <div class="history" id="history"></div>
+      <div class="display" id="display">0</div>
+    </div>
+    <div class="buttons">
+      <button class="calc-btn clear" onclick="clearAll()">C</button>
+      <button class="calc-btn clear" onclick="backspace()">⌫</button>
+      <button class="calc-btn op" onclick="inputOp('%')">%</button>
+      <button class="calc-btn op" onclick="inputOp('/')">÷</button>
+
+      <button class="calc-btn" onclick="inputNum('7')">7</button>
+      <button class="calc-btn" onclick="inputNum('8')">8</button>
+      <button class="calc-btn" onclick="inputNum('9')">9</button>
+      <button class="calc-btn op" onclick="inputOp('*')">×</button>
+
+      <button class="calc-btn" onclick="inputNum('4')">4</button>
+      <button class="calc-btn" onclick="inputNum('5')">5</button>
+      <button class="calc-btn" onclick="inputNum('6')">6</button>
+      <button class="calc-btn op" onclick="inputOp('-')">−</button>
+
+      <button class="calc-btn" onclick="inputNum('1')">1</button>
+      <button class="calc-btn" onclick="inputNum('2')">2</button>
+      <button class="calc-btn" onclick="inputNum('3')">3</button>
+      <button class="calc-btn op" onclick="inputOp('+')">+</button>
+
+      <button class="calc-btn zero" onclick="inputNum('0')">0</button>
+      <button class="calc-btn" onclick="inputNum('.')">.</button>
+      <button class="calc-btn eq" onclick="equals()">=</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== HIDDEN REELS PANEL ==================== -->
+<div id="reelsApp">
+  <div class="reels-header">
+    <div class="reels-title"><span class="dot"></span> Videos</div>
+    <div class="header-btns">
+      <button class="hdr-btn upload" onclick="document.getElementById('fileInput').click()">+ Upload</button>
+      <button class="hdr-btn" onclick="closePanel()">✕</button>
+    </div>
+  </div>
+
+  <div class="reels-container" id="reelsContainer"></div>
+
+  <input type="file" id="fileInput" accept="video/*" multiple>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+  /* ============================================================
+     CALCULATOR MODULE
+     ------------------------------------------------------------
+     PURPOSE:
+       Implements a fully functional calculator with keyboard
+       support and a hidden "secret code" trigger (1223) that
+       unlocks the private reels panel.
+
+     STATE VARIABLES:
+       current      -> The expression currently displayed
+       secretBuffer -> Rolling buffer of the last 4 digits typed,
+                       used to detect the secret unlock code
+     ============================================================ */
+
+  const displayEl = document.getElementById('display');
+  const historyEl = document.getElementById('history');
+  let current = '0';
+  let secretBuffer = '';
+
+  /**
+   * Pushes the current expression string to the display element.
+   * Called after every state mutation to keep the UI in sync.
+   */
+  function updateScreen() { displayEl.textContent = current; }
+
+  /**
+   * Appends a numeric character (0-9 or '.') to the current expression.
+   *
+   * BEHAVIOR:
+   *   - Blocks a second decimal point within the same number
+   *   - Replaces a leading '0' with the new digit (prevents "05")
+   *   - Updates the secret buffer used for the unlock code
+   *
+   * @param {string} n - The digit character ('0'-'9') or '.'.
+   */
+  function inputNum(n) {
+    if (n === '.' && current.includes('.')) return;
+    if (current === '0' && n !== '.') current = n;
+    else current += n;
+    secretBuffer = (secretBuffer + n).slice(-4);
+    updateScreen();
+  }
+
+  /**
+   * Appends a mathematical operator (+, -, *, /, %) to the expression.
+   *
+   * BEHAVIOR:
+   *   - If the expression already ends with an operator, replace it
+   *     (prevents "5++" type sequences)
+   *   - Clears the secret buffer since operators break the code sequence
+   *
+   * @param {string} op - The operator character.
+   */
+  function inputOp(op) {
+    if ('+-*/%'.includes(current.slice(-1))) current = current.slice(0, -1);
+    current += op;
+    secretBuffer = '';
+    updateScreen();
+  }
+
+  /**
+   * Resets the calculator to its initial state:
+   * display -> '0', history cleared, secret buffer cleared.
+   */
+  function clearAll() {
+    current = '0';
+    historyEl.textContent = '';
+    secretBuffer = '';
+    updateScreen();
+  }
+
+  /**
+   * Removes the last character from the current expression.
+   * Falls back to '0' if the expression becomes empty.
+   * Also trims one character off the secret buffer.
+   */
+  function backspace() {
+    current = current.length > 1 ? current.slice(0, -1) : '0';
+    if (current === '') current = '0';
+    secretBuffer = secretBuffer.slice(0, -1);
+    updateScreen();
+  }
+
+  /**
+   * Evaluates the current expression and displays the result.
+   *
+   * SPECIAL BEHAVIOR:
+   *   If the secret buffer OR the display equals '1223',
+   *   the calculator silently clears itself and opens the
+   *   hidden reels panel instead of computing anything.
+   *
+   * EVALUATION:
+   *   Uses Function() constructor with "use strict" for a fast,
+   *   sandboxed eval of the arithmetic expression. Results are
+   *   rounded to 10 decimal places to avoid floating-point noise
+   *   (e.g. 0.1 + 0.2 -> 0.30000000000000004).
+   */
+  function equals() {
+    // ---- Secret unlock check ----
+    if (secretBuffer === '1223' || current === '1223') {
+      clearAll();
+      openPanel();
+      secretBuffer = '';
+      return;
+    }
+
+    // ---- Normal evaluation ----
+    try {
+      let expr = current.replace(/×/g, '*').replace(/÷/g, '/');
+      if (!/[0-9]/.test(expr)) return;
+      let result = Function('"use strict";return (' + expr + ')')();
+      if (result === undefined || isNaN(result)) return;
+      historyEl.textContent = current + ' =';
+      current = String(Math.round(result * 1e10) / 1e10);
+    } catch (e) {
+      current = 'Error';
+    }
+    secretBuffer = '';
+    updateScreen();
+  }
+
+  /**
+   * Global keyboard handler for the calculator.
+   *
+   * NOTES:
+   *   - Ignored entirely while the reels panel is open, so keyboard
+   *     shortcuts don't conflict between the two "apps"
+   *   - Mirrors the on-screen buttons for a full desktop experience
+   */
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('reelsApp').classList.contains('active')) return;
+    if (/[0-9.]/.test(e.key)) inputNum(e.key);
+    else if (['+','-','*','/','%'].includes(e.key)) inputOp(e.key);
+    else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); equals(); }
+    else if (e.key === 'Backspace') backspace();
+    else if (e.key === 'Escape') clearAll();
+  });
+
+  /* ============================================================
+     INDEXEDDB STORAGE MODULE
+     ------------------------------------------------------------
+     PURPOSE:
+       Persists uploaded video blobs in the browser's IndexedDB
+       so they survive page reloads without ever touching a server.
+
+     SCHEMA:
+       Database : SecretVideosDB (version 1)
+       Store    : videos (autoIncrement keyPath: 'id')
+       Record   : { id, name, type, blob, date }
+     ============================================================ */
+
+  const DB_NAME = 'SecretVideosDB';
+  const STORE = 'videos';
+  let db;
+
+  /**
+   * Opens (or lazily creates) the IndexedDB database.
+   * @returns {Promise<IDBDatabase>} Resolves with the open database.
+   */
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        const database = e.target.result;
+        if (!database.objectStoreNames.contains(STORE)) {
+          database.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        }
+      };
+      req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  /**
+   * Inserts a new video record into the store.
+   * @param {Object} v - The record { name, type, blob, date }.
+   * @returns {Promise<number>} The auto-generated record ID.
+   */
+  function addVideo(v) {
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const req = tx.objectStore(STORE).add(v);
+      req.onsuccess = () => res(req.result);
+      req.onerror = (e) => rej(e.target.error);
+    });
+  }
+
+  /**
+   * Retrieves every stored video record.
+   * @returns {Promise<Array>} Array of records in insertion order.
+   */
+  function getAllVideos() {
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = () => res(req.result);
+      req.onerror = (e) => rej(e.target.error);
+    });
+  }
+
+  /**
+   * Deletes a single video record by its ID.
+   * @param {number} id - The record ID to remove.
+   * @returns {Promise<void>}
+   */
+  function deleteVideo(id) {
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const req = tx.objectStore(STORE).delete(id);
+      req.onsuccess = () => res();
+      req.onerror = (e) => rej(e.target.error);
+    });
+  }
+
+  /* ============================================================
+     REELS PANEL MODULE
+     ------------------------------------------------------------
+     PURPOSE:
+       TikTok-style vertical video feed with autoplay, snapping,
+       mute, delete, and drag-to-seek functionality.
+
+     LIFECYCLE:
+       1. openPanel()   -> mount + fade in + build DOM
+       2. buildReels()  -> recreate all reel nodes from IndexedDB
+       3. closePanel()  -> pause videos, fade out, cleanup URLs
+     ============================================================ */
+
+  const reelsApp = document.getElementById('reelsApp');
+  const reelsContainer = document.getElementById('reelsContainer');
+  const toastEl = document.getElementById('toast');
+  let currentObserver = null;   // Active IntersectionObserver
+  let objectUrls = [];          // Tracked blob URLs for cleanup
+
+  /**
+   * Displays a transient toast notification at the bottom.
+   * @param {string} msg     - The message text.
+   * @param {boolean} isError - If true, uses the red error style.
+   */
+  function showToast(msg, isError = false) {
+    toastEl.textContent = msg;
+    toastEl.className = 'toast show' + (isError ? ' error' : '');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  /**
+   * Opens the hidden reels panel.
+   * Ensures IndexedDB is ready before rendering any reels.
+   */
+  async function openPanel() {
+    if (!db) await openDB();
+    reelsApp.classList.add('active');
+    requestAnimationFrame(() => reelsApp.classList.add('visible'));
+    await buildReels();
+  }
+
+  /**
+   * Closes the reels panel and performs full cleanup:
+   *   - Pauses every video (stops background audio)
+   *   - Fades out the panel before unmounting
+   *   - Revokes every created object URL (prevents memory leaks)
+   *   - Empties the reels container DOM
+   *   - Resets the calculator to '0' for a clean return
+   */
+  function closePanel() {
+    document.querySelectorAll('.reel video').forEach(v => v.pause());
+    reelsApp.classList.remove('visible');
+    setTimeout(() => {
+      reelsApp.classList.remove('active');
+      objectUrls.forEach(u => URL.revokeObjectURL(u));
+      objectUrls = [];
+      reelsContainer.innerHTML = '';
+    }, 350);
+    clearAll();
+  }
+
+  /**
+   * Formats a number of seconds into "M:SS" time string.
+   * @param {number} s - Seconds (can be fractional / invalid).
+   * @returns {string} Formatted timestamp.
+   */
+  function fmtTime(s) {
+    if (!isFinite(s) || s < 0) s = 0;
+    s = Math.floor(s);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + String(sec).padStart(2, '0');
+  }
+
+  /**
+   * Rebuilds the entire reels feed from IndexedDB.
+   *
+   * RESPONSIBILITIES:
+   *   - Cleans up the previous observer, videos, and URLs
+   *   - Loads all videos from storage
+   *   - Renders an empty state if none exist
+   *   - Constructs each reel's DOM programmatically
+   *   - Attaches tap/double-tap, drag-seek, and playback handlers
+   *   - Sets up an IntersectionObserver for autoplay
+   */
+  async function buildReels() {
+    // ---- Cleanup previous render ----
+    if (currentObserver) currentObserver.disconnect();
+    document.querySelectorAll('.reel video').forEach(v => v.pause());
+    objectUrls.forEach(u => URL.revokeObjectURL(u));
+    objectUrls = [];
+    reelsContainer.innerHTML = '';
+
+    const videos = await getAllVideos();
+
+    // ---- Empty state when there are no uploads ----
+    if (videos.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = `
+        <div class="empty-icon">🎬</div>
+        <div class="empty-title">No videos yet</div>
+        <div class="empty-sub">Upload your first video to get started<br>You can select multiple files at once</div>
+        <button class="empty-btn" onclick="document.getElementById('fileInput').click()">+ Upload Video</button>
+      `;
+      reelsContainer.appendChild(empty);
+      return;
+    }
+
+    // ---- Render each reel ----
+    videos.forEach((v, index) => {
+      const url = URL.createObjectURL(v.blob);
+      objectUrls.push(url);
+
+      const reel = document.createElement('div');
+      reel.className = 'reel';
+      reel.dataset.id = v.id;
+
+      // --- Video element ---
+      const video = document.createElement('video');
+      video.src = url;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      video.setAttribute('webkit-playsinline', '');
+      video.setAttribute('playsinline', '');
+
+      // --- Center play/pause indicator ---
+      const playPauseIndicator = document.createElement('div');
+      playPauseIndicator.className = 'play-pause';
+      playPauseIndicator.textContent = '▶';
+
+      // --- Double-tap seek flash badge ---
+      const seekFlash = document.createElement('div');
+      seekFlash.className = 'seek-flash';
+
+      // --- Progress bar (track + fill + thumb + time tooltip) ---
+      const progressBar = document.createElement('div');
+      progressBar.className = 'progress-bar';
+      const progressTrack = document.createElement('div');
+      progressTrack.className = 'progress-track';
+      const progressFill = document.createElement('div');
+      progressFill.className = 'progress-fill';
+      const progressThumb = document.createElement('div');
+      progressThumb.className = 'progress-thumb';
+      const progressTime = document.createElement('div');
+      progressTime.className = 'progress-time';
+      progressTime.textContent = '0:00 / 0:00';
+      progressTrack.appendChild(progressFill);
+      progressTrack.appendChild(progressThumb);
+      progressBar.appendChild(progressTrack);
+      progressBar.appendChild(progressTime);
+
+      // --- Reel counter badge (e.g. "2 / 7") ---
+      const counter = document.createElement('div');
+      counter.className = 'counter';
+      counter.textContent = `${index + 1} / ${videos.length}`;
+
+      // --- Bottom overlay with name/size + action buttons ---
+      const overlay = document.createElement('div');
+      overlay.className = 'reel-overlay';
+
+      const info = document.createElement('div');
+      info.className = 'reel-info';
+      const name = document.createElement('div');
+      name.className = 'reel-name';
+      name.textContent = v.name;
+      const meta = document.createElement('div');
+      meta.className = 'reel-meta';
+      meta.textContent = (v.blob.size / 1024 / 1024).toFixed(2) + ' MB';
+      info.appendChild(name);
+      info.appendChild(meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'reel-actions';
+
+      // Mute toggle button
+      const muteBtn = document.createElement('button');
+      muteBtn.className = 'act-btn';
+      muteBtn.innerHTML = video.muted ? '🔇' : '🔊';
+      muteBtn.title = 'Sound';
+      muteBtn.onclick = (e) => {
+        e.stopPropagation();
+        video.muted = !video.muted;
+        muteBtn.innerHTML = video.muted ? '🔇' : '🔊';
+      };
+
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.className = 'act-btn del';
+      delBtn.innerHTML = '🗑';
+      delBtn.title = 'Delete';
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        video.pause();
+        if (!confirm('Delete this video?')) return;
+        await deleteVideo(v.id);
+        showToast('Video deleted');
+        await buildReels();
+      };
+
+      actions.appendChild(muteBtn);
+      actions.appendChild(delBtn);
+
+      overlay.appendChild(info);
+      overlay.appendChild(actions);
+
+      // --- Assemble the reel ---
+      reel.appendChild(video);
+      reel.appendChild(playPauseIndicator);
+      reel.appendChild(seekFlash);
+      reel.appendChild(progressBar);
+      reel.appendChild(counter);
+      reel.appendChild(overlay);
+
+      /* ============================================================
+         REEL INTERACTIONS
+         ============================================================ */
+
+      /**
+       * Toggles play/pause and flashes the center indicator.
+       */
+      function togglePlay() {
+        if (video.paused) {
+          video.play().catch(()=>{});
+          playPauseIndicator.textContent = '▶';
+        } else {
+          video.pause();
+          playPauseIndicator.textContent = '⏸';
+        }
+        playPauseIndicator.classList.add('flash');
+        setTimeout(() => playPauseIndicator.classList.remove('flash'), 400);
+      }
+
+      /**
+       * Displays a temporary seek badge (e.g. "10 ⏩").
+       * @param {string} txt - The badge text.
+       */
+      function showSeekFlash(txt) {
+        seekFlash.textContent = txt;
+        seekFlash.classList.add('show');
+        clearTimeout(seekFlash._t);
+        seekFlash._t = setTimeout(() => seekFlash.classList.remove('show'), 500);
+      }
+
+      /* ----- Tap / Double-tap detection -----
+         Single tap anywhere      -> toggle play/pause
+         Double tap left third    -> seek back 10s
+         Double tap right third   -> seek forward 10s
+         Taps in the middle third -> immediate play/pause
+      */
+      let tapTimer = null;
+      let tapSide = null;
+      let lastTapTime = 0;
+
+      reel.addEventListener('click', (e) => {
+        // Ignore taps on interactive elements
+        if (e.target.closest('.act-btn') || e.target.closest('.progress-bar') || e.target.closest('.reel-actions')) return;
+
+        const rect = reel.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const w = rect.width;
+        const now = Date.now();
+
+        // Divide the reel into left / center / right thirds
+        let side;
+        if (x < w * 0.33) side = 'left';
+        else if (x > w * 0.67) side = 'right';
+        else side = 'center';
+
+        // Detect a double-tap on the same side within 300ms
+        if (tapTimer && side !== 'center' && side === tapSide && (now - lastTapTime) < 300) {
+          clearTimeout(tapTimer);
+          tapTimer = null;
+          if (side === 'left') {
+            video.currentTime = Math.max(0, video.currentTime - 10);
+            showSeekFlash('⏪ 10');
+          } else {
+            video.currentTime = Math.min(video.duration || 0, video.currentTime + 10);
+            showSeekFlash('10 ⏩');
+          }
+          return;
+        }
+
+        tapSide = side;
+        lastTapTime = now;
+
+        // Center taps are immediate (no double-tap ambiguity)
+        if (side === 'center') {
+          togglePlay();
+          return;
+        }
+
+        // Side taps wait briefly to see if a second tap arrives
+        clearTimeout(tapTimer);
+        tapTimer = setTimeout(() => {
+          tapTimer = null;
+          togglePlay();
+        }, 280);
+      });
+
+      /* ----- Double-click heart animation (center only) ----- */
+      reel.addEventListener('dblclick', (e) => {
+        if (e.target.closest('.act-btn') || e.target.closest('.progress-bar') || e.target.closest('.reel-actions')) return;
+        const rect = reel.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const w = rect.width;
+        if (x > w * 0.33 && x < w * 0.67) {
+          const heart = document.createElement('div');
+          heart.textContent = '❤️';
+          heart.style.cssText = `
+            position:absolute; top:50%; left:50%;
+            transform:translate(-50%,-50%) scale(0);
+            font-size:100px; z-index:20; pointer-events:none;
+            transition: transform .5s cubic-bezier(.2,1.5,.5,1), opacity .6s;
+          `;
+          reel.appendChild(heart);
+          requestAnimationFrame(() => {
+            heart.style.transform = 'translate(-50%,-50%) scale(1.2)';
+          });
+          setTimeout(() => {
+            heart.style.opacity = '0';
+            heart.style.transform = 'translate(-50%,-50%) scale(1.5)';
+          }, 450);
+          setTimeout(() => heart.remove(), 1100);
+        }
+      });
+
+      /* ----- Drag-to-seek on the progress bar ----- */
+      function seekFromEvent(clientX) {
+        const rect = progressTrack.getBoundingClientRect();
+        let pct = (clientX - rect.left) / rect.width;
+        pct = Math.max(0, Math.min(1, pct));
+        if (video.duration) {
+          video.currentTime = pct * video.duration;
+        }
+        return pct;
+      }
+
+      let isDragging = false;
+
+      progressBar.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        isDragging = true;
+        progressBar.classList.add('dragging');
+        progressBar.setPointerCapture(e.pointerId);
+        seekFromEvent(e.clientX);
+      });
+      progressBar.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        seekFromEvent(e.clientX);
+      });
+      progressBar.addEventListener('pointerup', (e) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        isDragging = false;
+        progressBar.classList.remove('dragging');
+      });
+      progressBar.addEventListener('pointercancel', (e) => {
+        isDragging = false;
+        progressBar.classList.remove('dragging');
+      });
+
+      // Simple click on the track (without dragging) still seeks
+      progressTrack.addEventListener('click', (e) => {
+        e.stopPropagation();
+        seekFromEvent(e.clientX);
+      });
+
+      /* ----- Live progress bar updates ----- */
+      video.addEventListener('timeupdate', () => {
+        if (!isDragging && video.duration) {
+          const pct = (video.currentTime / video.duration) * 100;
+          progressFill.style.width = pct + '%';
+          progressThumb.style.left = pct + '%';
+          progressTime.textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(video.duration);
+        }
+      });
+      video.addEventListener('durationchange', () => {
+        progressTime.textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(video.duration);
+      });
+
+      // While dragging, keep the bar and tooltip in sync with the pointer
+      progressBar.addEventListener('pointermove', (e) => {
+        if (isDragging && video.duration) {
+          const rect = progressTrack.getBoundingClientRect();
+          let pct = (e.clientX - rect.left) / rect.width;
+          pct = Math.max(0, Math.min(1, pct));
+          progressFill.style.width = (pct * 100) + '%';
+          progressThumb.style.left = (pct * 100) + '%';
+          progressTime.textContent = fmtTime(pct * video.duration) + ' / ' + fmtTime(video.duration);
+        }
+      });
+
+      /* ----- Auto-play when metadata loads and reel is in view ----- */
+      video.addEventListener('loadedmetadata', () => {
+        const rect = reel.getBoundingClientRect();
+        const vh = window.innerHeight;
+        if (rect.top >= -vh * 0.3 && rect.top <= vh * 0.3) {
+          video.play().catch(()=>{});
+        }
+        progressTime.textContent = fmtTime(0) + ' / ' + fmtTime(video.duration);
+      });
+
+      reelsContainer.appendChild(reel);
+    });
+
+    /* ============================================================
+       INTERSECTION OBSERVER (AUTOPLAY LOGIC)
+       ------------------------------------------------------------
+       - Plays the reel that occupies > 60% of the viewport
+       - Pauses and rewinds any reel that scrolls out of view
+       - `scroll-snap-stop: always` on the reel ensures the browser
+         won't skip reels mid-swipe, which keeps the observer's
+         decisions predictable
+       ============================================================ */
+    currentObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const vid = entry.target.querySelector('video');
+        if (!vid) return;
+        if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+          vid.currentTime = 0;
+          vid.play().catch(()=>{});
+        } else {
+          vid.pause();
+          vid.currentTime = 0;
+        }
+      });
+    }, {
+      root: reelsContainer,
+      threshold: [0, 0.6, 1]
+    });
+
+    document.querySelectorAll('.reel').forEach(r => currentObserver.observe(r));
+  }
+
+  /* ============================================================
+     UPLOAD HANDLER
+     ------------------------------------------------------------
+     - Accepts one or more video files via the hidden <input type=file>
+     - Stores each file as a record in IndexedDB
+     - Rebuilds the reels feed after all uploads finish
+     - Shows toasts for progress and completion feedback
+     ============================================================ */
+  document.getElementById('fileInput').addEventListener('change', async (e) => {
+    const files = [...e.target.files].filter(f => f.type.startsWith('video/'));
+    if (!files.length) { e.target.value = ''; return; }
+
+    showToast(`Saving ${files.length} video(s)...`);
+    let okCount = 0;
+    for (const file of files) {
+      try {
+        await addVideo({
+          name: file.name,
+          type: file.type,
+          blob: file,
+          date: Date.now()
+        });
+        okCount++;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    e.target.value = '';
+    showToast(`${okCount} video(s) saved ✅`);
+    await buildReels();
+  });
+
+  /* ============================================================
+     GLOBAL KEYBOARD SHORTCUTS FOR THE REELS PANEL
+     ------------------------------------------------------------
+     Active ONLY while the reels panel is open:
+       Escape        -> Close panel
+       ArrowDown/Up  -> Navigate between reels
+       Space         -> Toggle play/pause on the active video
+       ArrowRight    -> Seek forward 5s
+       ArrowLeft     -> Seek backward 5s
+     ============================================================ */
+  document.addEventListener('keydown', (e) => {
+    if (!reelsApp.classList.contains('active')) return;
+
+    if (e.key === 'Escape') { closePanel(); return; }
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const reels = [...document.querySelectorAll('.reel')];
+      if (!reels.length) return;
+      const containerRect = reelsContainer.getBoundingClientRect();
+
+      // Find the currently visible reel
+      let idx = reels.findIndex(r => {
+        const rect = r.getBoundingClientRect();
+        return Math.abs(rect.top - containerRect.top) < containerRect.height / 2;
+      });
+      if (idx === -1) idx = 0;
+
+      const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
+      if (next >= 0 && next < reels.length) {
+        reels[next].scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    if (e.key === ' ') {
+      e.preventDefault();
+      const vids = [...document.querySelectorAll('.reel video')];
+      const currentVid = vids.find(v => !v.paused && !v.ended);
+      if (currentVid) {
+        if (currentVid.paused) currentVid.play(); else currentVid.pause();
+      }
+    }
+
+    if (e.key === 'ArrowRight') {
+      const vids = [...document.querySelectorAll('.reel video')];
+      const cur = vids.find(v => !v.paused);
+      if (cur) cur.currentTime = Math.min(cur.duration || 0, cur.currentTime + 5);
+    }
+
+    if (e.key === 'ArrowLeft') {
+      const vids = [...document.querySelectorAll('.reel video')];
+      const cur = vids.find(v => !v.paused);
+      if (cur) cur.currentTime = Math.max(0, cur.currentTime - 5);
+    }
+  });
+
+  /* ============================================================
+     BOOTSTRAP
+     ------------------------------------------------------------
+     Pre-opens IndexedDB so the first tap of the secret code has
+     zero delay when opening the reels panel.
+     ============================================================ */
+  openDB().catch(err => console.error('DB error:', err));
+</script>
+</body>
+</html>
