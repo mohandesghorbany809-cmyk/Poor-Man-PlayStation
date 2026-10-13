@@ -45,6 +45,7 @@ No downloads. No installation. Just click and play! 🚀
 | 30 | Sudoku Trio | [🔢 Play Now](https://mohandesghorbany809-cmyk.github.io/Poor-Man-PlayStation/Sudoku%20Trio.html) |
 | 31 | The Forgotten Realm | [🏰 Play Now](https://mohandesghorbany809-cmyk.github.io/Poor-Man-PlayStation/The%20Forgotten%20Realm.html) |
 | 32 | Tile Rus | [🧩 Play Now](https://mohandesghorbany809-cmyk.github.io/Poor-Man-PlayStation/Tile%20Rus%F0%9F%A7%A9.html) |
+| 33 | Video Hider | [🎬 Play Now](https://mohandesghorbany809-cmyk.github.io/Poor-Man-PlayStation/Video%20hider%F0%9F%94%9E%F0%9F%98%88.html) |
 
 ---
 
