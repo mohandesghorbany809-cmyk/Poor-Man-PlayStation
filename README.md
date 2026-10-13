@@ -1,7 +1,7 @@
 
 # 🎮 Poor Man PlayStation
 
-### 🌙 33 Games. One Place. Endless Fun!
+### 🌙 34 Games. One Place. Endless Fun!
 
 Welcome to **Poor-Man-PlayStation** — a collection of browser games created by Midnight Coder!
 
