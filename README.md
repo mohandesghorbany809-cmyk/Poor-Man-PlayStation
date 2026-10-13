@@ -1,6 +1,7 @@
 
 # 🎮 Poor Man PlayStation
-<img width="2075" height="758" alt="file_0000000027748246b7671cebe95c6579" src="https://github.com/user-attachments/assets/cfc1d2fd-36da-4500-b3c8-cdd3fdb04fb8" />
+
+<img width="1254" height="1254" alt="file_0000000041f881f58e544f4d654cb927" src="https://github.com/user-attachments/assets/b7cd7d34-e85a-4d52-ae29-5d82786de0b9" />
 
 ### 🌙 34 Games. One Place. Endless Fun!
 
@@ -54,10 +55,7 @@ No downloads. No installation. Just click and play! 🚀
 ### 🌟 Made with passion by Midnight Coder
 
 **Start small, dream BIG!** 🌙
-
-
-
-
+<img width="1536" height="1024" alt="file_00000000d5b481f4a4b50ccdb17e57d6" src="https://github.com/user-attachments/assets/072a6b3f-2b87-4758-81b1-6af1530d9bd5" />
 
 
 Okay okay, folks — feel free to watch the test videos for each game before you jump into the code. See how they work, then decide. Thanks! 😀😀
