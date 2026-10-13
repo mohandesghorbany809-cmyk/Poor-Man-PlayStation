@@ -11,7 +11,7 @@ No downloads. No installation. Just click and play! 🚀
 
 ## 🎯 Game Arcade
 
-| #  | Game 🎮 | Play 🚀 |
+| # | Game 🎮 | Play 🚀 |
 |---:|---|---|
 | 01 | Arcade Shooter Of Death | [🚀 Play Now](https://mohandesghorbany809-cmyk.github.io/Poor-Man-PlayStation/ArcadeShooterOfDeath.html) |
 | 02 | Awesome Memol | [🎮 Play Now](https://mohandesghorbany809-cmyk.github.io/Poor-Man-PlayStation/Awesome%20Memol.html) |
